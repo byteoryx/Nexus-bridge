@@ -25,6 +25,10 @@ description = "Put here your description"
 "random_swap_optimism" = "Random DEX Swap on Optimism"
 "random_swap_base" = "Random DEX Swap on Base"
 
+#### тут первый рандом это декс, второй рандом это сеть
+# random сети задаются в random_networks_to_swap
+"random_swap_random" = "Random DEX Swap on Random Network"
+
 # Nexus
 "nexus_bridge_usdc_arbitrum" = "Nexus Bridge USDC from Arbitrum"
 "nexus_bridge_usdc_optimism" = "Nexus Bridge USDC from Optimism"
