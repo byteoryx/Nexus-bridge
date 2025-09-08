@@ -1,0 +1,41 @@
+[
+    {
+		"inputs":[
+			{
+				"name":"_destination",
+				"type":"uint32"
+			},
+			{
+				"name":"_recipient",
+				"type":"bytes32"
+			},
+            {
+				"name":"_amountOrId",
+				"type":"uint256"
+			}
+		],
+		"name":"transferRemote",
+		"outputs":[
+
+		],
+		"stateMutability":"payable",
+		"type":"function"
+	},
+	{
+		"inputs":[
+			{
+				"name":"_destinationDomain",
+				"type":"uint32"
+			}
+		],
+		"name":"quoteGasPayment",
+		"outputs":[
+			{
+				"name":"gasPayment",
+				"type":"uint256"
+			}
+		],
+		"stateMutability":"view",
+		"type":"function"
+	}
+]

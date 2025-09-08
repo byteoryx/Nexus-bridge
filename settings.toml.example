@@ -1,0 +1,79 @@
+[general]
+number_of_retries = 3
+retry_delay = 15
+timeout = 15
+SHUFFLE_ACCOUNTS = true
+SHUFFLE_ACTIONS = false
+
+[delays]
+accounts_delay = [300, 500]  # задержка между кошельками в потоке
+action_delay = [10, 15]  # задержка между действиями одного кошелька
+# (действие в данном контексте - это каждая строка или ее повторение из раздела [functions] в пресете)
+flow_delay = [1000, 2000]  # задержка между потоками
+
+start_time = "00:00" # Время старта отработки по локальному времени устройства запуска, при 00:00 функция отключена
+number_or_replays = 10 # 1 для однократного запуска, можно вписать любое целое положительное число
+
+[flow]
+wallets_per_flow = 1  # количество кошельков в одном потоке
+
+[gas]
+gas_control = true
+gas_retry_delay = 30
+
+gas_price_multiplier = 1.2
+gas_limit_multiplier = 1.5
+
+[gas.maximum_gwei_dict]
+base = 1
+arbitrum = 1
+optimism = 1
+
+[logger]
+rotation = "2 MB"
+retention = "1 week"
+debug_logging = false
+log_to_file = true
+show_full_address = false
+
+[telegram]
+send_notifications = false
+bot_key = ""
+chat_id = ""
+
+[CEX]
+[CEX.okx]
+api_key = ""
+api_secret_key = ""
+passphrase = ""
+
+[CEX.bitget]
+api_key = ""
+api_secret_key = ""
+passphrase = ""
+
+[CEX.mexc]
+api_key = ""
+api_secret_key = ""
+passphrase = ""
+
+[networks_rpc]
+Ethereum = [
+    { url = "https://eth.llamarpc.com", max_retries = 5 },
+    { url = "https://ethereum.publicnode.com", max_retries = 3 },
+]
+
+Base = [
+    { url = "https://base.llamarpc.com", max_retries = 5 },
+    { url = "https://1rpc.io/base", max_retries = 3 }
+]
+
+
+Optimism = [
+    { url = "https://optimism.llamarpc.com", max_retries = 5 },
+    { url = "https://1rpc.io/op", max_retries = 3 }
+]
+
+Arbitrum = [
+    { url = "https://arb1.arbitrum.io/rpc", max_retries = 5 },
+]
