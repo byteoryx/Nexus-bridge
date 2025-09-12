@@ -14,7 +14,7 @@ from core.init_settings import settings
 from libs.blockchains.eth_async.applications.jumper_exchange.jumper_client import JumperExchange
 from libs.blockchains.eth_async.applications.nexus_bridge.nexus_bridge import NexusBridge
 from libs.blockchains.eth_async.applications.uniswap.uniswap_client import Uniswap
-from libs.blockchains.eth_async.data.models import Networks
+from libs.blockchains.eth_async.data.models import Networks, CommonValues
 from libs.blockchains.eth_async.ethclient import NetworkClient
 from libs.blockchains.omnichain_models import TokenAmount
 from libs.blockchains.eth_async.exceptions import InsufficientFundsException
@@ -313,14 +313,25 @@ class Executioner:
         bridge_amount = randfloat(bridge_amounts[0], bridge_amounts[1])
         bridge_usdc_amount = TokenAmount(bridge_amount, usdc_contract.decimals, False)
 
+        approve_amounts = nexus_bridge_params.get("usdc_approve_amount")
+        if approve_amounts:
+            if isinstance(approve_amounts, list):
+                approve_amount = randfloat(approve_amounts[0], approve_amounts[1])
+                approve_amount = TokenAmount(approve_amount, usdc_contract.decimals, False)
+            elif isinstance(approve_amounts, str) and approve_amounts.lower() == "infinity":
+                approve_amount = approve_amounts
+            else:
+                raise ValueError(f"Incorrect usdc_approve_amount value: {approve_amounts}")
+        else:
+            approve_amount = bridge_usdc_amount
+
         self.logger.info(f"USDC balance in {action_network.capitalize()} before bridge: {usdc_balance} $USDC")
         if usdc_balance < bridge_usdc_amount:
             self.logger.warning(f"USDC balance is less than rolled bridge amount: {bridge_usdc_amount} $USDC."
                                 f" Using whole USDC balance to bridge.")
             bridge_usdc_amount = usdc_balance
 
-        await nexus.bridge_usdc(bridge_usdc_amount, dest_network, usdc_contract)
-        return True
+        return await nexus.bridge_usdc(bridge_usdc_amount, dest_network, usdc_contract, approve_amount)
 
     async def get_biggest_usdc_balance(self, controller: Controller, networks_list: list[str]):
         balances = {}

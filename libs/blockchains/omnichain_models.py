@@ -19,11 +19,11 @@ class TokenAmount:
 
     def __str__(self):
         rounding = int(self.decimals / 3)
-        return f'{round(self.Ether, rounding)}'
+        return f'{round(float(self.Ether), rounding)}'
 
     def __repr__(self):
         rounding = int(self.decimals / 3)
-        return f'{round(self.Ether, rounding)}'
+        return f'{round(float(self.Ether), rounding)}'
 
     def __int__(self):
         return int(self.Wei)

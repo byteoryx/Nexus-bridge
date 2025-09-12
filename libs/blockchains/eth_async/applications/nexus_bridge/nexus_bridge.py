@@ -10,7 +10,7 @@ from tasks.controller import Controller
 
 
 class NexusBridge(BaseEVMTaskClass["NexusBridge"]):
-    Contracts = {
+    CONTRACTS = {
         'arbitrum_to_optimism': EVMContracts.ArbitrumOpenUSDT,
         'arbitrum_to_base': EVMContracts.ArbitrumOpenUSDT,
         'optimism_to_base': EVMContracts.OptimismOpenUSDT,
@@ -28,7 +28,10 @@ class NexusBridge(BaseEVMTaskClass["NexusBridge"]):
         super().__init__(self)
 
 
-    async def bridge_usdc(self, amount_in: TokenAmount, destination_chain: Network, usdc_contract):
+    async def bridge_usdc(self, amount_in: TokenAmount,
+                          destination_chain: Network,
+                          usdc_contract,
+                          approve_amount = "infinity"):
         # 13. quoteGasPayment (0xf2ed8c53) read method
         async_contract = await self._get_async_contract(destination_chain)
         gas_payment = await self.read_contract(async_contract,  "quoteGasPayment", destination_chain.chain_id)
@@ -49,10 +52,12 @@ class NexusBridge(BaseEVMTaskClass["NexusBridge"]):
             value=self.network_client.w3.to_wei(gas_payment.Wei, 'wei'),
         )
 
-        approve = await self.network_client.transactions.approve_interface(usdc_contract.address,
-                                                                           async_contract.address,
-                                                                           amount_in)
-        self._logger.info(f"USDC approved: {approve}")
+        await self.network_client.transactions.approve_interface(
+            usdc_contract.address,
+            async_contract.address,
+            amount=approve_amount if approve_amount != "infinity" else None,
+            approve_inf=True if approve_amount == "infinity" else False
+        )
 
         tx_hash = await self.network_client.transactions.send_tx(tx_params)
-        return tx_hash
+        return True

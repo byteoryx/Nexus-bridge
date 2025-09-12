@@ -25,10 +25,6 @@ description = "Put here your description"
 "random_swap_optimism" = "Random DEX Swap on Optimism"
 "random_swap_base" = "Random DEX Swap on Base"
 
-#### тут первый рандом это декс, второй рандом это сеть
-# random сети задаются в random_networks_to_swap
-"random_swap_random" = "Random DEX Swap on Random Network"
-
 # Nexus
 "nexus_bridge_usdc_arbitrum" = "Nexus Bridge USDC from Arbitrum"
 "nexus_bridge_usdc_optimism" = "Nexus Bridge USDC from Optimism"
@@ -79,6 +75,8 @@ withdraw_eth_base_amount = [0.001, 0.002]
 ### Параметры для бриджей в Нексусе
 [functions_params.nexus_bridge_params]
 usdc_amount_to_bridge = [100, 500]
+#usdc_approve_amount = [1000, 10000]
+usdc_approve_amount = "infinity"
 
 networks_to_check_balance_for_biggest = ["base", "arbitrum", "optimism"]
 networks_to_bridge_to = ["base", "arbitrum", "optimism"]
