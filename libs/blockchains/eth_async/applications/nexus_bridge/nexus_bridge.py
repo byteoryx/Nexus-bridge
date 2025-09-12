@@ -36,7 +36,7 @@ class NexusBridge(BaseEVMTaskClass["NexusBridge"]):
         async_contract = await self._get_async_contract(destination_chain)
         gas_payment = await self.read_contract(async_contract,  "quoteGasPayment", destination_chain.chain_id)
         gas_payment = TokenAmount(gas_payment, 18, True)
-        self._logger.info(f"Payment in ETH for bridge: {gas_payment} ETH")
+        self._logger.info(f"Payment in ETH for bridge: {gas_payment.Ether} ETH")
 
         # 20. transferRemote (0x81b4e8b4)
         bytes32_address = Web3.to_bytes(hexstr=self.eth_client.w3_account.address).rjust(32, b'\0')
@@ -52,11 +52,17 @@ class NexusBridge(BaseEVMTaskClass["NexusBridge"]):
             value=self.network_client.w3.to_wei(gas_payment.Wei, 'wei'),
         )
 
+        if isinstance(approve_amount, str) and approve_amount == "infinity":
+            approve_amount = None
+            approve_inf = True
+        else:
+            approve_inf = False
+
         await self.network_client.transactions.approve_interface(
             usdc_contract.address,
             async_contract.address,
-            amount=approve_amount if approve_amount != "infinity" else None,
-            approve_inf=True if approve_amount == "infinity" else False
+            amount=approve_amount,
+            approve_inf=approve_inf
         )
 
         tx_hash = await self.network_client.transactions.send_tx(tx_params)
