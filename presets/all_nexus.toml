@@ -40,6 +40,18 @@ description = "Put here your description"
 
 
 [functions_params]
+[functions_params.common_withdraw_params]
+[functions_params.common_withdraw_params.mexc]
+# Сети для вывода с Mexc
+networks_to_withdraw = ["optimism"]
+
+[functions_params.common_withdraw_params.bitget]
+# Сети для вывода с Bitget
+networks_to_withdraw = ["base", "arbitrum"]
+
+[functions_params.common_withdraw_params.okx]
+# Сети для вывода с Okx
+networks_to_withdraw = ["base", "arbitrum"]
 
 ### Параметры первого вывода под свап USDC
 [functions_params.initial_withdraw_params]
@@ -48,8 +60,6 @@ ticker = "ETH"
 
 # тут указываем биржи для рандомного выбора (если например захочется Мекс убрать)
 cex_to_random = ["Mexc", "Bitget", "Okx"]
-# будет выбрана рандомная сеть, если нужна конкретная, то можно оставить одну нужную
-networks_to_withdraw = ["base", "arbitrum", "optimism"]
 
 # ЭТО ДЛЯ ПЕРВОГО БОЛЬШОГО ВЫВОДА С БИРЖИ
 withdraw_eth_arbitrum_amount = [0.1, 0.2]

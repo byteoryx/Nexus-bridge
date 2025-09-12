@@ -30,6 +30,18 @@ description = "Put here your description"
 
 
 [functions_params]
+[functions_params.common_withdraw_params]
+[functions_params.common_withdraw_params.mexc]
+# Сети для вывода с Mexc
+networks_to_withdraw = ["optimism"]
+
+[functions_params.common_withdraw_params.bitget]
+# Сети для вывода с Bitget
+networks_to_withdraw = ["base", "arbitrum"]
+
+[functions_params.common_withdraw_params.okx]
+# Сети для вывода с Okx
+networks_to_withdraw = ["base", "arbitrum"]
 
 ### Параметры первого вывода под свап USDC
 [functions_params.initial_withdraw_params]
@@ -38,8 +50,6 @@ ticker = "ETH"
 
 # тут указываем биржи для рандомного выбора (если например захочется Мекс убрать)
 cex_to_random = ["Mexc", "Bitget", "Okx"]
-# будет выбрана рандомная сеть, если нужна конкретная, то можно оставить одну нужную
-networks_to_withdraw = ["base", "arbitrum", "optimism"]
 
 # ЭТО ДЛЯ ПЕРВОГО БОЛЬШОГО ВЫВОДА С БИРЖИ
 withdraw_eth_arbitrum_amount = [0.1, 0.2]
@@ -52,9 +62,9 @@ withdraw_eth_base_amount = [0.1, 0.2]
 # биржа для рефилла выбирается рандомно
 cex_to_refill = ["Mexc", "Bitget", "Okx"]
 
-min_eth_arbitrum_amount = 0.0000000000
-min_eth_optimism_amount = 0.0000000000
-min_eth_base_amount = 0.000000000
+min_eth_arbitrum_amount = 0.1
+min_eth_optimism_amount = 0.1
+min_eth_base_amount = 0.1
 
 # ЭТО ДЛЯ РЕФИЛЛОВ КОГДА НА ГАЗ НЕ ХВАТАЕТ
 withdraw_eth_arbitrum_amount = [0.001, 0.002]

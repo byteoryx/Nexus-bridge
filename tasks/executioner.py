@@ -109,10 +109,20 @@ class Executioner:
                               f" for network {network_name.capitalize()}")
             return False
 
-        cex_name = random.choice(action_params["withdraw_on_min_amount_params"]["cex_to_refill"]).lower()
+        common_withdraw_params = action_params["common_withdraw_params"]
+
+        cexes_to_choose = []
+        for cex in common_withdraw_params.keys():
+            if network_name.lower() in common_withdraw_params[cex]["networks_to_withdraw"]:
+                cexes_to_choose.append(cex)
+
+        self.logger.info(f"Cexes to choose for refill: {cexes_to_choose}")
+
+        cex_name = random.choice(cexes_to_choose)
         withdraw_amount = randfloat(*withdraw_amounts, step=0.0000001)
 
         cex_withdraw_client = CexWithdraw(cex_name, self.log_context)
+
         return await cex_withdraw_client.withdraw(withdraw_amount, network_name, network_client)
 
 
@@ -346,12 +356,17 @@ class Executioner:
 
     async def execute_initial_actions(self, action_type, action_params: dict, controller: Controller):
         init_withdraw_params = action_params["initial_withdraw_params"]
+        common_withdraw_params = action_params["common_withdraw_params"]
 
         cex_name = action_type.split("_")[-1]
         if cex_name == "random":
             cex_name = random.choice(init_withdraw_params["cex_to_random"]).lower()
-            
-        action_network = random.choice(init_withdraw_params["networks_to_withdraw"])
+
+        networks_to_withdraw = common_withdraw_params[cex_name]["networks_to_withdraw"]
+        action_network = random.choice(networks_to_withdraw)
+
+        self.logger.info(f"Selected random network for initial withdraw: {action_network.capitalize()},"
+                         f" from {cex_name.capitalize()}")
 
         # coin = init_withdraw_params["ticker"]
         network_client = getattr(controller.eth_client, action_network.lower())
