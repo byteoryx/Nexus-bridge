@@ -34,6 +34,9 @@ description = "Put here your description"
 
 
 [functions_params]
+#usdc_approve_amount = [1000, 10000]
+usdc_approve_amount = "infinity"
+
 [functions_params.common_withdraw_params]
 [functions_params.common_withdraw_params.mexc]
 # Сети для вывода с Mexc
@@ -80,8 +83,6 @@ withdraw_eth_base_amount = [0.001, 0.002]
 ### Параметры для бриджей в Нексусе
 [functions_params.nexus_bridge_params]
 usdc_amount_to_bridge = [100, 500]
-#usdc_approve_amount = [1000, 10000]
-usdc_approve_amount = "infinity"
 
 networks_to_check_balance_for_biggest = ["base", "arbitrum", "optimism"]
 networks_to_bridge_to = ["base", "arbitrum", "optimism"]

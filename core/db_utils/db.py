@@ -109,7 +109,7 @@ class DatabaseManager:
             query = session.query(Route).options(
                 joinedload(Route.actions)  # Предварительно загружаем actions
             ).filter(
-                Route.status.in_(statuses)
+                RouteAction.status.in_(statuses)
             )
 
             # Применяем пагинацию
@@ -137,15 +137,35 @@ class DatabaseManager:
             Общее количество маршрутов с указанными статусами
         """
         session = self.Session()
-
         try:
-            count = session.query(func.count(Route.id)).filter(
-                Route.status.in_(statuses)
+            count = session.query(func.count(Route.id.distinct())).join(Route.actions).filter(
+                RouteAction.status.in_(statuses)
             ).scalar()
             return count
         except Exception as e:
             self.logger.error(f"Ошибка при получении количества маршрутов: {e}")
             return 0
+        finally:
+            session.close()
+
+    def get_route_actions_filtered_by_statuses_paginated(self, statuses: list[RouteStatus],
+                                                         limit: int = 20, offset: int = 0) -> list[RouteAction]:
+        session = self.Session()
+        try:
+            query = session.query(RouteAction).join(Route).join(Account).options(
+                joinedload(RouteAction.route).joinedload(Route.account),
+                joinedload(RouteAction.route).joinedload(Route.actions)
+            ).filter(
+                RouteAction.status.in_(statuses)
+            ).order_by(Account.id).limit(limit).offset(offset)
+
+            # Выполняем запрос и возвращаем результаты
+            route_actions = query.all()
+
+            return route_actions
+        except Exception as e:
+            self.logger.exception(f"Ошибка при получении RouteAction с пагинацией: {e}")
+            return []
         finally:
             session.close()
 
@@ -595,6 +615,30 @@ class DatabaseManager:
             if proxy:
                 proxy.in_use = False
                 session.commit()
+        finally:
+            session.close()
+
+    def get_routes_with_actions_by_status_paginated(self, statuses: list[RouteStatus], 
+                                                   limit: int = 20, offset: int = 0) -> list[Route]:
+        """
+        Получает маршруты с предзагруженными действиями и аккаунтами для отображения.
+        Возвращает уникальные маршруты, у которых есть действия с указанными статусами.
+        """
+        session = self.Session()
+        try:
+            # Получаем уникальные маршруты, у которых есть действия с нужными статусами
+            query = session.query(Route).join(RouteAction).filter(
+                RouteAction.status.in_(statuses)
+            ).options(
+                joinedload(Route.account),
+                joinedload(Route.actions)
+            ).distinct().order_by(Route.account_id).limit(limit).offset(offset)
+
+            routes = query.all()
+            return routes
+        except Exception as e:
+            self.logger.exception(f"Ошибка при получении маршрутов с действиями: {e}")
+            return []
         finally:
             session.close()
 

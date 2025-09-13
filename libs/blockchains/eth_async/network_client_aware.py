@@ -122,8 +122,12 @@ class NetworkClientAware:
                     if any(phrase in str(e).lower() for phrase in ("execution reverted",)):
                         raise e
 
-                    self.logger.error(f"Attempt {num}/{settings.general.number_of_retries} for RPC failed due to: "
+                    text = (f"Attempt {num}/{settings.general.number_of_retries} for RPC failed due to: "
                                       f"{e.__class__.__name__}: {str(e)}")
+                    if settings.logging.debug_logging:
+                        self.logger.exception(text)
+                    else:
+                        self.logger.error(text)
                     await self.client.increase_rpc_retry_count()
 
                     if "ClientConnectorError.__init__()" in str(e):

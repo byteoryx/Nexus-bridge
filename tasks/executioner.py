@@ -60,20 +60,17 @@ class Executioner:
             gas_price = await network_client.transactions.gas_price()
             gwei = gas_price.Wei / 10 ** 9
             if gwei > maximum_gwei:
-                for _ in range(settings.general.number_of_retries):
+                while True:
                     self.logger.warning(f"High gas in {network_name.capitalize()}: {gwei} Gwei")
                     await self.sleep(settings.gas.gas_retry_delay)
                     gas_price = await network_client.transactions.gas_price()
                     gwei = gas_price.Wei / 10 ** 9
                     if gwei < maximum_gwei:
-                        self.logger.success(f"Current gas price in {network_name.capitalize()} is good: {gwei} Gwei")
-                        return True
-                else:
-                    return False
+                        break
 
-            else:
-                self.logger.success(f"Current gas price in {network_name.capitalize()} is good: {gwei} Gwei")
-                return True
+            self.logger.success(f"Current gas price in {network_name.capitalize()} is good: {gwei} Gwei")
+
+        return True
 
 
     async def check_balance_and_withdraw(self, controller: Controller, network_name: str, action_params: dict) -> bool:
@@ -200,10 +197,7 @@ class Executioner:
             action_network = random.choice(action_params["swap"]["random_networks_to_swap"])
             self.logger.info(f"Selected random Jumper network: {action_network.capitalize()}")
 
-        gas_result = await self.gas_control(controller, action_network)
-        if not gas_result:
-            self.logger.error(f"Oops, gas is still too high, quitting action")
-            return False
+        await self.gas_control(controller, action_network)
 
         balance_check = await self.check_balance_and_withdraw(controller, action_network, action_params)
         if not balance_check:
@@ -272,17 +266,18 @@ class Executioner:
             swap_percent = randfloat(swap1 / 100, swap2 / 100, 0.00000001)
             return TokenAmount(float(balance.Ether) * swap_percent, decimals, False)
 
-        elif all(isinstance(amount, float) for amount in swap_amounts):
+        elif (all(isinstance(amount, float) for amount in swap_amounts) or
+              all(isinstance(amount, int) for amount in swap_amounts)):
             amount = randfloat(*swap_amounts, step=0.00000001)
             amount = TokenAmount(amount, decimals, False)
-            if amount < balance:
+            if amount > balance:
                 token_str = token if token else "native"
                 self.logger.error(f"Tried to swap {amount} {token_str} but balance is {balance} {token_str}")
                 raise InsufficientFundsException
             return amount
 
         else:
-            raise Exception(f"Swap amounts must be str or float: {swap_amounts}")
+            raise Exception(f"Swap amounts must be str or float or int: {swap_amounts}")
 
     async def execute_nexus_actions(self, action_type, action_params: dict, controller: Controller):
         action_network = action_type.split("_")[-1]
@@ -294,10 +289,7 @@ class Executioner:
 
             action_network = biggest_balance_network
 
-        gas_result = await self.gas_control(controller, action_network)
-        if not gas_result:
-            self.logger.error(f"Oops, gas is still too high, quitting action")
-            return False
+        await self.gas_control(controller, action_network)
 
         balance_check = await self.check_balance_and_withdraw(controller, action_network, action_params)
         if not balance_check:
@@ -323,7 +315,7 @@ class Executioner:
         bridge_amount = randfloat(bridge_amounts[0], bridge_amounts[1])
         bridge_usdc_amount = TokenAmount(bridge_amount, usdc_contract.decimals, False)
 
-        approve_amounts = nexus_bridge_params.get("usdc_approve_amount")
+        approve_amounts = action_params.get("usdc_approve_amount")
         if approve_amounts:
             if isinstance(approve_amounts, list):
                 approve_amount = randfloat(approve_amounts[0], approve_amounts[1])
@@ -393,10 +385,7 @@ class Executioner:
             action_network = random.choice(action_params["swap"]["random_networks_to_swap"])
             self.logger.info(f"Selected random Uniswap network: {action_network.capitalize()}")
 
-        gas_result = await self.gas_control(controller, action_network)
-        if not gas_result:
-            self.logger.error(f"Oops, gas is still too high, quitting action")
-            return False
+        await self.gas_control(controller, action_network)
 
         balance_check = await self.check_balance_and_withdraw(controller, action_network, action_params)
         if not balance_check:
@@ -412,21 +401,25 @@ class Executioner:
         results = {}
 
         chain_swap_params = swap_params.get(action_network)
+        approve_amounts = action_params.get("usdc_approve_amount")
 
         if isinstance(chain_swap_params, dict):
-            return await self.uniswap_swap(uniswap, chain_swap_params, action_network, results)
+            return await self.uniswap_swap(uniswap, chain_swap_params, action_network, results, approve_amounts)
         elif isinstance(chain_swap_params, list):
             for token_params in chain_swap_params:
-                results = await self.uniswap_swap(uniswap, token_params, action_network, results)
+                results = await self.uniswap_swap(uniswap, token_params, action_network, results, approve_amounts)
 
         return results
 
-    async def uniswap_swap(self, uniswap, token_params, action_network, results):
-        result_string = f"{action_network} from {token_params["from_token"]} to {token_params["to_token"]}"
+    async def uniswap_swap(self, uniswap, token_params, action_network, results, approve_amounts):
+        result_string = f"{action_network} from {token_params['from_token']} to {token_params['to_token']}"
 
         try:
             swap_amount = await self.get_evm_swap_amount(uniswap.network_client,
                                                          token_params["from_token"], token_params["amount"])
+
+            approve_decimals = token_params["from_decimals"] if token_params["from_token"] != "native" else token_params["to_decimals"]
+            approve_amount = self.get_approve_amount(approve_amounts, approve_decimals)
 
             results[result_string] = await uniswap.swap_exact_in(
                 amount_from=swap_amount,
@@ -434,7 +427,8 @@ class Executioner:
                 token_to=token_params["to_token"],
                 from_decimals=token_params["from_decimals"],
                 to_decimals=token_params["to_decimals"],
-                slippage=token_params["slippage"]  # не делим на 100
+                slippage=token_params["slippage"],  # не делим на 100,
+                approve_amount=approve_amount
             )
 
             if token_params["swap_mode"] == "to_and_from":
@@ -442,17 +436,32 @@ class Executioner:
                     raise Exception(f"You are trying to swap back all native into token {token_params['from_token']}")
 
                 swap_amount = await uniswap.network_client.wallet.balance(token_params["to_token"])
-                result_string = f"{action_network} from {token_params["to_token"]} to {token_params["from_token"]}"
+                result_string = f"{action_network} from {token_params['to_token']} to {token_params['from_token']}"
                 results[result_string] = await uniswap.swap_exact_in(
                     amount_from=swap_amount,
                     token_from=token_params["to_token"],
                     token_to=token_params["from_token"],
                     from_decimals=token_params["to_decimals"],
                     to_decimals=token_params["from_decimals"],
-                    slippage=token_params["slippage"]  # не делим на 100
+                    slippage=token_params["slippage"],  # не делим на 100
+                    approve_amount=approve_amount
                 )
         except InsufficientFundsException as e:
             self.logger.error(f"{excname(e)} {str(e)}")
             results[result_string] = "Insufficient funds"
 
         return results
+
+    def get_approve_amount(self, approve_amounts: list[float] | str | None, token_decimals: int):
+        if approve_amounts:
+            if isinstance(approve_amounts, list):
+                approve_amount = randfloat(approve_amounts[0], approve_amounts[1])
+                approve_amount = TokenAmount(approve_amount, token_decimals, False)
+            elif isinstance(approve_amounts, str) and approve_amounts.lower() == "infinity":
+                approve_amount = approve_amounts
+            else:
+                raise ValueError(f"Incorrect usdc_approve_amount value: {approve_amounts}")
+        else:
+            approve_amount = None
+
+        return approve_amount

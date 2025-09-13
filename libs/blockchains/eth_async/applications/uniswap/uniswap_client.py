@@ -110,24 +110,41 @@ class Uniswap(BaseEVMTaskClass["Uniswap"]):
                     token_to: RawContract | str,
                     slippage: float = 0.5,
                     from_decimals: int = 18,
-                    to_decimals: int = 18):
+                    to_decimals: int = 18,
+                    approve_amount: int | TokenAmount = None):
         if token_from == "native" or token_from == "ETH":
             token_from = "0x0000000000000000000000000000000000000000"
+
+        if token_to == "native" or token_to == "ETH":
+            token_to = "0x0000000000000000000000000000000000000000"
 
         if token_from == "0x0000000000000000000000000000000000000000":
             from_currency = self.network_client.network.coin_symbol
         else:
             from_currency = token_from
 
+        if token_to == "0x0000000000000000000000000000000000000000":
+            to_currency = self.network_client.network.coin_symbol
+        else:
+            to_currency = token_to
+
         quote, permit_data = await self._get_quote(amount, token_from, token_to, slippage, direction)
         amount = TokenAmount(int(quote['route'][0][0]['amountIn']), from_decimals, True)
+        from_token_symbol = quote['route'][0][0]['tokenIn']['symbol']
+        to_token_symbol = quote['route'][0][0]['tokenOut']['symbol']
 
-        self._logger.info(f"Starting to swap {amount} {from_currency} to {token_to}")
+        self._logger.info(f"Starting to swap {amount} {from_currency} to {to_currency}")
 
         if permit_data:
+            if isinstance(approve_amount, str) and approve_amount == "infinity":
+                approve_amount = None
+                approve_inf = True
+            else:
+                approve_inf = False
+
             approve = await self.network_client.transactions.approve_interface(token_from,
                                                                      permit_data['domain']['verifyingContract'],
-                                                                     amount)
+                                                                     approve_amount, approve_inf)
             if not approve:
                 raise Exception(f"Failed to approve {amount} {token_from} to {permit_data['domain']['verifyingContract']}")
 
@@ -137,8 +154,7 @@ class Uniswap(BaseEVMTaskClass["Uniswap"]):
 
         to_decimals = int(quote['route'][0][0]['tokenOut']['decimals'])
         amount_to = TokenAmount(int(quote['route'][0][0]['amountOut']), to_decimals, True)
-        self._logger.success(f"Successfully swapped {amount} {quote['route'][0][0]['tokenIn']['symbol']} to "
-                             f"{amount_to} {quote['route'][0][0]['tokenOut']['symbol']}")
+        self._logger.success(f"Successfully swapped {amount} {from_token_symbol} to {amount_to} {to_token_symbol}")
         return tx_hash
 
 
@@ -147,13 +163,17 @@ class Uniswap(BaseEVMTaskClass["Uniswap"]):
                             token_to: RawContract | str,
                             slippage: float = 0.5,
                             from_decimals: int = 18,
-                            to_decimals: int = 18):
-        return await self._swap("output", amount_to, token_from, token_to, slippage, from_decimals, to_decimals)
+                            to_decimals: int = 18,
+                             approve_amount: int | TokenAmount = None):
+        return await self._swap("output", amount_to, token_from, token_to,
+                                slippage, from_decimals, to_decimals, approve_amount)
 
     async def swap_exact_in(self, amount_from: int | TokenAmount,
                             token_from: RawContract | str,
                             token_to: RawContract | str,
                             slippage: float = 0.5,
                             from_decimals: int = 18,
-                            to_decimals: int = 18):
-        return await self._swap("input", amount_from, token_from, token_to, slippage, from_decimals, to_decimals)
+                            to_decimals: int = 18,
+                            approve_amount: int | TokenAmount = None):
+        return await self._swap("input", amount_from, token_from, token_to,
+                                slippage, from_decimals, to_decimals, approve_amount)

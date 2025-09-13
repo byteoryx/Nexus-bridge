@@ -50,7 +50,8 @@ def display_presets_table(presets):
     table.add_column("Parameters", style="yellow")
 
     for preset in presets:
-        table.add_row(preset["name"], preset["description"], preset["params"])
+        stringified_params = str(preset["params"])
+        table.add_row(preset["name"], preset["description"], stringified_params[:100])
 
     console.print(table)
 
@@ -94,7 +95,6 @@ async def display_accounts_paginated(route_status: RouteStatus):
     """
     page = 1
     page_size = 50
-    total_pages = 1
 
     while True:
         try:
@@ -110,7 +110,8 @@ async def display_accounts_paginated(route_status: RouteStatus):
 
             # Получаем данные для текущей страницы
             offset = (page - 1) * page_size
-            routes = db.get_routes_by_statuses_paginated([route_status], page_size, offset)
+            routes = db.get_routes_with_actions_by_status_paginated([route_status], page_size, offset)
+
 
             # Отображаем таблицу
             table = Table(title=f"{route_status.name} Accounts (Page {page} of {total_pages})", show_lines=True)
@@ -119,29 +120,35 @@ async def display_accounts_paginated(route_status: RouteStatus):
             table.add_column("Completed At Time", style="yellow")
 
             for route in routes:
+                # Фильтруем действия только с нужным статусом
+                filtered_actions = [action for action in route.actions if action.status == route_status]
+                
+                if not filtered_actions:
+                    continue  # Пропускаем маршруты без действий с нужным статусом
+                
                 grouped_actions = {}
-                for action in route.actions:
+                for action in filtered_actions:
                     if action.action_name not in grouped_actions:
-                        grouped_actions[action.action_name] = 0
+                        grouped_actions[action.action_name] = 1
                     else:
                         grouped_actions[action.action_name] += 1
 
                 names_list = []
                 for action_name, count in grouped_actions.items():
                     if count > 1:
-                        action_name += f" (x{count})"
+                        names_list.append(f"{action_name} (x{count})")
+                    else:
                         names_list.append(action_name)
 
-                str_actions = "Route Actions: " + ", ".join(names_list)
-                account = db.get_account_by_id(route.account_id)
+                str_actions = ",\n".join(names_list)
                 completed_at = route.completed_at.strftime(
                     "%d/%m/%Y, %H:%M:%S") if route.completed_at else "Not completed yet"
 
-                table.add_row(account.name, str_actions, completed_at)
+                table.add_row(route.account.name, str_actions, completed_at)
 
             console.print(table)
-            console.print(
-                f"Page {page} of {total_pages}, showing records {offset + 1}-{min(offset + len(routes), total_count)} of {total_count}")
+            console.print(f"Page {page} of {total_pages}, showing records"
+                          f" {offset + 1}-{min(offset + len(routes), total_count)} of {total_count}")
 
             # Варианты навигации
             choices = []
@@ -265,9 +272,9 @@ async def export_accounts_results_to_excel():
 
 
 async def main_menu():
-    cprint(text2art(text="nexussoft", font="crawford", chr_ignore=True, space=0),
+    cprint(text2art(text="fastfoodsofts", font="crawford", chr_ignore=True, space=0),
            color='blue', attrs=['bold'])
-    cprint("nexussoft", color='green', on_color='on_grey', attrs=['bold'])
+    cprint("https://t.me/fastfoodsofts", color='green', on_color='on_grey', attrs=['bold'])
     print('\n')
 
     while True:

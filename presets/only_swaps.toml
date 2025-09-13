@@ -10,9 +10,9 @@ description = "Put here your description"
 #"jumper_swap_base" = "Jumper Swap on Base"
 #
 ## Uniswap
-#"uniswap_swap_arbitrum" = "Uniswap Swap on Arbitrum"
-#"uniswap_swap_optimism" = "Uniswap Swap on Optimism"
-#"uniswap_swap_base" = "Uniswap Swap on Base"
+"uniswap_swap_arbitrum" = "Uniswap Swap on Arbitrum"
+"uniswap_swap_optimism" = "Uniswap Swap on Optimism"
+"uniswap_swap_base" = "Uniswap Swap on Base"
 
 # Random swap
 #"random_swap_arbitrum" = "Random DEX Swap on Arbitrum"
@@ -30,6 +30,9 @@ description = "Put here your description"
 
 
 [functions_params]
+#usdc_approve_amount = [1000, 10000]
+usdc_approve_amount = "infinity"
+
 [functions_params.common_withdraw_params]
 [functions_params.common_withdraw_params.mexc]
 # Сети для вывода с Mexc
@@ -62,9 +65,9 @@ withdraw_eth_base_amount = [0.1, 0.2]
 # биржа для рефилла выбирается рандомно
 cex_to_refill = ["Mexc", "Bitget", "Okx"]
 
-min_eth_arbitrum_amount = 0.1
-min_eth_optimism_amount = 0.1
-min_eth_base_amount = 0.1
+min_eth_arbitrum_amount = 0.00001
+min_eth_optimism_amount = 0.00001
+min_eth_base_amount = 0.000001
 
 # ЭТО ДЛЯ РЕФИЛЛОВ КОГДА НА ГАЗ НЕ ХВАТАЕТ
 withdraw_eth_arbitrum_amount = [0.001, 0.002]
@@ -75,8 +78,6 @@ withdraw_eth_base_amount = [0.001, 0.002]
 ### Параметры для бриджей в Нексусе
 [functions_params.nexus_bridge_params]
 usdc_amount_to_bridge = [100, 500]
-#usdc_approve_amount = [1000, 10000]
-usdc_approve_amount = "infinity"
 
 networks_to_check_balance_for_biggest = ["base", "arbitrum", "optimism"]
 networks_to_bridge_to = ["base", "arbitrum", "optimism"]
@@ -89,32 +90,32 @@ networks_to_bridge_to = ["base", "arbitrum", "optimism"]
 random_networks_to_swap = ["base", "arbitrum", "optimism"]
 
 [functions_params.swap.base]
-from_token = "native"
-from_decimals = 18
-to_token = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
-to_decimals = 6
+from_token = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
+from_decimals = 6
+to_token = "native"
+to_decimals = 18
 swap_mode = "only_to" # "to_and_from"
-amount = ["20", "30"]
+amount = [1 , 2]
 #amount = [1.001 , 1.003]
 slippage = 0.5 # %
 
 
 [functions_params.swap.optimism]
-from_token = "native"
-from_decimals = 18
-to_token = "0x0b2c639c533813f4aa9d7837caf62653d097ff85"
-to_decimals = 6
+from_token = "0x0b2c639c533813f4aa9d7837caf62653d097ff85"
+from_decimals = 6
+to_token = "native"
+to_decimals = 18
 swap_mode = "only_to"
-amount = [1.001 , 1.003]
+amount = [1 , 2]
 slippage = 0.5 # %
 
 [functions_params.swap.arbitrum]
-from_token = "native"
-from_decimals = 18
-to_token = "0xaf88d065e77c8cc2239327c5edb3a432268e5831"
-to_decimals = 6
+from_token = "0xaf88d065e77c8cc2239327c5edb3a432268e5831"
+from_decimals = 6
+to_token = "native"
+to_decimals = 18
 swap_mode = "only_to"
-amount = [1.001 , 1.003]
+amount = [1 , 2]
 slippage = 0.5 # %
 
 # POSSIBLE SWAP MODES
