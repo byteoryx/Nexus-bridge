@@ -264,7 +264,7 @@ class Transactions(NetworkClientAware):
     @NetworkClientAware.retry
     async def add_gas(self, tx_params):
         try:
-            if 'gas' not in tx_params or not int(tx_params['gas']):
+            if 'gas' not in tx_params or not int(tx_params['gas']) or tx_params['gas'] is None or tx_params['gas'] == 0:
                 gas = await self.client.w3.eth.estimate_gas(transaction=tx_params)
                 tx_params['gas'] = int(gas * settings.gas.gas_limit_multiplier)
             return tx_params
@@ -392,6 +392,10 @@ class Transactions(NetworkClientAware):
                 tx_params['gas'] = int(tx_params['gas'], 16)
             else:
                 tx_params['gas'] = int(tx_params['gas'])
+
+            # fallback на случай когда каким-то образом туда попадает -1
+            if tx_params["gas"] < 0:
+                tx_params['gas'] = None
 
         if tx_params.get("chainId"):
             if isinstance(tx_params['chainId'], str) and tx_params['chainId'].startswith("0x"):
@@ -590,7 +594,9 @@ class Transactions(NetworkClientAware):
         return await self.sign_and_send(tx_params=tx_params)
 
     @NetworkClientAware.retry
-    async def approve_interface(self, token: types.Contract, spender: types.Address, amount: types.Amount | None = None,
+    async def approve_interface(self, token: types.Contract, spender: types.Address,
+                                amount_to_approve: types.Amount | None = None,
+                                amount_in_tx: types.Amount | None = None,
                                 approve_inf: bool = False) -> bool:
         balance = await self.client.wallet.balance(token=token)
         if isinstance(token, RawContract):
@@ -612,10 +618,10 @@ class Transactions(NetworkClientAware):
                 self.logger.debug(f"Tried to approve native token, returning True")
                 return True
 
-        if not amount and not approve_inf:
-            amount = balance
-        elif not amount and approve_inf:
-            amount = TokenAmount(CommonValues.InfinityInt, 18, True)
+        if not amount_to_approve and not approve_inf:
+            amount_to_approve = balance
+        elif not amount_to_approve and approve_inf:
+            amount_to_approve = TokenAmount(CommonValues.InfinityInt, 18, True)
 
         approved = await self.client.transactions.approved_amount(
             token=token,
@@ -623,14 +629,15 @@ class Transactions(NetworkClientAware):
             owner=self.client.w3_account.address
         )
 
-        if amount.Wei <= approved.Wei:
+        if amount_to_approve.Wei <= approved.Wei or amount_in_tx.Wei <= approved.Wei:
+            approved = approved if not approved.Wei == CommonValues.InfinityInt else "Infinite"
             self.logger.success(f"{approved} {token_symbol} already approved for {spender}")
             return True
 
         tx = await self.client.transactions.approve(
             token=token,
             spender=spender,
-            amount=amount
+            amount=amount_to_approve
         )
 
         if isinstance(tx, Tx):
@@ -639,7 +646,8 @@ class Transactions(NetworkClientAware):
             return False
 
         if receipt:
-            self.logger.success(f"{amount} {token_symbol} successfully approved for {spender}")
+            amount_to_approve = amount_to_approve if not approve_inf else "Infinite"
+            self.logger.success(f"{amount_to_approve} {token_symbol} successfully approved for {spender}")
             return True
 
         return False
