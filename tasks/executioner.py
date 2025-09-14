@@ -21,6 +21,7 @@ from libs.blockchains.eth_async.ethclient import NetworkClient
 from libs.blockchains.omnichain_models import TokenAmount
 from libs.blockchains.eth_async.exceptions import InsufficientFundsException
 from libs.cex.withdraw import CexWithdraw
+from tasks.hyperlane_fee_checker import HyperLaneFeeChecker
 from tasks.prechecks import prechecks, nexus_network_resolver
 from utils.utils import randfloat, excname
 from tasks.controller import Controller
@@ -291,12 +292,18 @@ class Executioner:
                                     ):
         nexus_bridge_params = action_params["nexus_bridge_params"]
 
-        await self.gas_control(controller, action_network)
+        # checker = HyperLaneFeeChecker(controller.eth_client, controller.requests_client, self.log_context)
+        # threshold = TokenAmount(self.account.max_hyperlane_fees, 18, False)
+        # if "start_date" in nexus_bridge_params:
+        #     start_date = nexus_bridge_params["start_date"]
+        # else:
+        #     start_date = "2000-01-01T00:00:00"
+        #     self.logger.warning(f"No start date provided for Nexus bridge. Using default date {start_date}")
+        #
+        # total_igp, messages_count = await checker.get_total_fees(start_date)
+        # if total_igp > threshold:
+        #     self.logger.warning(f"Total IGP after {start_date} is {total_igp} IGP, higher than threshold {threshold}. Skipping bridge")
 
-        balance_check = await self.check_balance_and_withdraw(controller, action_network, action_params)
-        if not balance_check:
-            self.logger.error(f"Oops, balance is still too low, quitting action")
-            return False
 
         dest_networks_list: list = nexus_bridge_params["networks_to_bridge_to"]
         if action_network in dest_networks_list:

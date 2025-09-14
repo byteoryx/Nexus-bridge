@@ -66,7 +66,8 @@ class Odos(BaseEVMTaskClass["Odos"]):
         }
         # self._logger.debug(f"Payload: {payload}")
 
-        return await self._requests_client.post(quote_url, [200], additional_headers=self._headers, json=payload)
+        return await self._requests_client.post(quote_url, [200], additional_headers=self._headers,
+                                                json=payload)
 
     async def assemble_transaction(self, path_id):
         assemble_url = "https://api.odos.xyz/sor/assemble"
@@ -77,7 +78,8 @@ class Odos(BaseEVMTaskClass["Odos"]):
             "simulate": True,
         }
 
-        return await self._requests_client.post(assemble_url, [200], additional_headers=self._headers, json=payload)
+        return await self._requests_client.post(assemble_url, [200], additional_headers=self._headers,
+                                                json=payload)
 
 
     async def swap(self,

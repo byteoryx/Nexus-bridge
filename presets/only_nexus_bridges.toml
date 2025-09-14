@@ -52,9 +52,9 @@ networks_to_withdraw = ["base", "arbitrum"]
 # биржа для рефилла выбирается рандомно
 cex_to_refill = ["mexc", "bitget", "okx"]
 
-min_eth_arbitrum_amount = 0.05
-min_eth_optimism_amount = 0.05
-min_eth_base_amount = 0.05
+min_eth_arbitrum_amount = 0.000005
+min_eth_optimism_amount = 0.000005
+min_eth_base_amount = 0.0000005
 
 # ЭТО ДЛЯ РЕФИЛЛОВ КОГДА НА ГАЗ НЕ ХВАТАЕТ
 withdraw_eth_arbitrum_amount = [0.001, 0.002]
