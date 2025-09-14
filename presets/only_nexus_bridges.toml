@@ -21,47 +21,57 @@ description = "Put here your description"
 #usdc_approve_amount = [1000, 10000]
 usdc_approve_amount = "infinity"
 
-[functions_params.common_withdraw_params]
-[functions_params.common_withdraw_params.mexc]
-# Сети для вывода с Mexc
-networks_to_withdraw = ["optimism"]
-
-[functions_params.common_withdraw_params.bitget]
-# Сети для вывода с Bitget
-networks_to_withdraw = ["base", "arbitrum"]
-
-[functions_params.common_withdraw_params.okx]
-# Сети для вывода с Okx
-networks_to_withdraw = ["base", "arbitrum"]
-
 ### Параметры первого вывода под свап USDC
 [functions_params.initial_withdraw_params]
 ### withdraw settings
-ticker = "ETH"
+ticker = "ETH" # USDC
 
 # тут указываем биржи для рандомного выбора (если например захочется Мекс убрать)
-cex_to_random = ["Mexc", "Bitget", "Okx"]
+cex_to_random = ["mexc", "bitget", "okx"]
 
 # ЭТО ДЛЯ ПЕРВОГО БОЛЬШОГО ВЫВОДА С БИРЖИ
-withdraw_eth_arbitrum_amount = [0.1, 0.2]
-withdraw_eth_optimism_amount = [0.1, 0.2]
-withdraw_eth_base_amount = [0.1, 0.2]
+withdraw_eth_arbitrum_amount = [0.001, 0.002]
+withdraw_eth_optimism_amount = [0.001, 0.002]
+withdraw_eth_base_amount = [0.001, 0.002]
+
+[functions_params.initial_withdraw_params.mexc]
+# Сети для ПЕРВОГО вывода с Mexc
+networks_to_withdraw = ["optimism"]
+
+[functions_params.initial_withdraw_params.bitget]
+# Сети для ПЕРВОГО вывода с Bitget
+networks_to_withdraw = ["base", "arbitrum"]
+
+[functions_params.initial_withdraw_params.okx]
+# Сети для ПЕРВОГО вывода с Okx
+networks_to_withdraw = ["base", "arbitrum"]
 
 
 ### Параметры для выводов при недостатке нативки в сетях
 [functions_params.withdraw_on_min_amount_params]
 # биржа для рефилла выбирается рандомно
-cex_to_refill = ["Mexc", "Bitget", "Okx"]
+cex_to_refill = ["mexc", "bitget", "okx"]
 
-min_eth_arbitrum_amount = 0.0005
-min_eth_optimism_amount = 0.0005
-min_eth_base_amount = 0.0005
+min_eth_arbitrum_amount = 0.05
+min_eth_optimism_amount = 0.05
+min_eth_base_amount = 0.05
 
 # ЭТО ДЛЯ РЕФИЛЛОВ КОГДА НА ГАЗ НЕ ХВАТАЕТ
 withdraw_eth_arbitrum_amount = [0.001, 0.002]
 withdraw_eth_optimism_amount = [0.001, 0.002]
 withdraw_eth_base_amount = [0.001, 0.002]
 
+[functions_params.withdraw_on_min_amount_params.mexc]
+# Сети для РЕФИЛЛА с Mexc
+networks_to_withdraw = ["optimism"]
+
+[functions_params.withdraw_on_min_amount_params.bitget]
+# Сети для РЕФИЛЛА с Bitget
+networks_to_withdraw = ["base", "arbitrum"]
+
+[functions_params.withdraw_on_min_amount_params.okx]
+# Сети для РЕФИЛЛА с Okx
+networks_to_withdraw = ["base", "arbitrum"]
 
 ### Параметры для бриджей в Нексусе
 [functions_params.nexus_bridge_params]

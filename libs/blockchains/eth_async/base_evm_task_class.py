@@ -23,9 +23,16 @@ class BaseEVMTaskClass(Generic[T]):
     def network_client(self) -> NetworkClient:
         """Get current network client"""
         try:
-            return getattr(self._class_object.eth_client, self._class_object._current_network)
-        except AttributeError:
-            return getattr(self._class_object._eth_client, self._class_object._current_network)
+            try:
+                return getattr(self._class_object.eth_client, self._class_object._current_network)
+            except AttributeError:
+                return getattr(self._class_object._eth_client, self._class_object._current_network)
+        except TypeError as e:
+            try:
+                logger = self._class_object.logger
+            except AttributeError:
+                logger = self._class_object._logger
+            logger.error(f"Network client not found, probably network not set: {e}")
 
     async def read_contract(self, contract: types.Contract, func_name: str, *args, **kwargs):
         return await self.network_client.contracts.read_contract_function(contract, func_name, *args, **kwargs)

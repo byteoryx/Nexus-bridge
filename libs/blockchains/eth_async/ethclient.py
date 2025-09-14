@@ -1,12 +1,14 @@
 from __future__ import annotations
 
+import ssl
 from typing import TYPE_CHECKING
 import random
 
+import certifi
 from web3 import AsyncWeb3
 from web3.eth import AsyncEth
 from eth_account.signers.local import LocalAccount
-from aiohttp import ClientSession
+from aiohttp import ClientSession, TCPConnector, ClientTimeout
 from web3.middleware import ExtraDataToPOAMiddleware
 
 from core.logger import get_logger
@@ -20,6 +22,7 @@ from ..omnichain_functions import get_next_rpc_from_network_config
 if TYPE_CHECKING:
     from core.settings_models import NetworkConfig
 
+ssl_ctx = ssl.create_default_context(cafile=certifi.where())
 
 class NetworkClient:
     """
@@ -249,7 +252,8 @@ class EthClient:
 
     async def __aenter__(self):
         for network_name, network_client in self._network_clients.items():
-            custom_session = ClientSession()
+            conn = TCPConnector(ssl=ssl_ctx, ttl_dns_cache=300)  # кэш DNS
+            custom_session = ClientSession(connector=conn, timeout=ClientTimeout(total=10))
             self._sessions[network_name] = custom_session  # Сохраняем сессию
             await network_client.w3.provider.cache_async_session(custom_session)
         return self

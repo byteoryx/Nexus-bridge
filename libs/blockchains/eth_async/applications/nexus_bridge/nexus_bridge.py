@@ -58,12 +58,11 @@ class NexusBridge(BaseEVMTaskClass["NexusBridge"]):
         else:
             approve_inf = False
 
-        await self.network_client.transactions.approve_interface(
-            usdc_contract.address,
-            async_contract.address,
-            amount=approve_amount,
-            approve_inf=approve_inf
-        )
+        await self.network_client.transactions.approve_interface(token=usdc_contract.address,
+                                                               spender=async_contract.address,
+                                                               amount_in_tx=amount_in,
+                                                               amount_to_approve=approve_amount,
+                                                               approve_inf=approve_inf)
 
         tx_hash = await self.network_client.transactions.send_tx(tx_params)
         return True

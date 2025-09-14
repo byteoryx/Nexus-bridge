@@ -3,6 +3,7 @@ from typing import Literal
 from core.logger import get_logger
 from libs.blockchains.eth_async.base_evm_task_class import BaseEVMTaskClass
 from libs.blockchains.eth_async.data.models import RawContract, CommonValues
+from libs.blockchains.omnichain_functions import resolve_token_addresses
 from libs.blockchains.omnichain_models import TokenAmount
 from libs.blockchains.eth_async.ethclient import EthClient
 from libs.blockchains.eth_async.exceptions import InsufficientFundsException
@@ -112,28 +113,14 @@ class Uniswap(BaseEVMTaskClass["Uniswap"]):
                     from_decimals: int = 18,
                     to_decimals: int = 18,
                     approve_amount: int | TokenAmount = None):
-        if token_from == "native" or token_from == "ETH":
-            token_from = "0x0000000000000000000000000000000000000000"
-
-        if token_to == "native" or token_to == "ETH":
-            token_to = "0x0000000000000000000000000000000000000000"
-
-        if token_from == "0x0000000000000000000000000000000000000000":
-            from_currency = self.network_client.network.coin_symbol
-        else:
-            from_currency = token_from
-
-        if token_to == "0x0000000000000000000000000000000000000000":
-            to_currency = self.network_client.network.coin_symbol
-        else:
-            to_currency = token_to
+        token_from, token_to, from_currency, to_currency = resolve_token_addresses(token_from, token_to)
 
         quote, permit_data = await self._get_quote(amount, token_from, token_to, slippage, direction)
         amount = TokenAmount(int(quote['route'][0][0]['amountIn']), from_decimals, True)
         from_token_symbol = quote['route'][0][0]['tokenIn']['symbol']
         to_token_symbol = quote['route'][0][0]['tokenOut']['symbol']
 
-        self._logger.info(f"Starting to swap {amount} {from_currency} to {to_currency}")
+        self._logger.info(f"Swap on Uniswap: {amount} {from_currency} -> {to_currency}")
 
         if permit_data:
             if isinstance(approve_amount, str) and approve_amount == "infinity":
@@ -142,11 +129,13 @@ class Uniswap(BaseEVMTaskClass["Uniswap"]):
             else:
                 approve_inf = False
 
-            approve = await self.network_client.transactions.approve_interface(token_from,
-                                                                     permit_data['domain']['verifyingContract'],
-                                                                     approve_amount, approve_inf)
+            approve = await self.network_client.transactions.approve_interface(token=token_from,
+                                                                     spender=permit_data['domain']['verifyingContract'],
+                                                                     amount_in_tx=amount,
+                                                                     amount_to_approve=approve_amount,
+                                                                     approve_inf=approve_inf)
             if not approve:
-                raise Exception(f"Failed to approve {amount} {token_from} to {permit_data['domain']['verifyingContract']}")
+                raise Exception(f"Failed to approve {approve_amount} {token_from} to {permit_data['domain']['verifyingContract']}")
 
         permit = await self._sign_permit(permit_data)
         swap_data = await self._request_swap_data(quote, permit_data, permit)

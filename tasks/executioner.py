@@ -13,12 +13,15 @@ from core.logger import get_logger
 from core.init_settings import settings
 from libs.blockchains.eth_async.applications.jumper_exchange.jumper_client import JumperExchange
 from libs.blockchains.eth_async.applications.nexus_bridge.nexus_bridge import NexusBridge
+from libs.blockchains.eth_async.applications.odos.odos import Odos
 from libs.blockchains.eth_async.applications.uniswap.uniswap_client import Uniswap
+from libs.blockchains.eth_async.applications.velodrome.velodrome_client import Velodrome
 from libs.blockchains.eth_async.data.models import Networks, CommonValues
 from libs.blockchains.eth_async.ethclient import NetworkClient
 from libs.blockchains.omnichain_models import TokenAmount
 from libs.blockchains.eth_async.exceptions import InsufficientFundsException
 from libs.cex.withdraw import CexWithdraw
+from tasks.prechecks import prechecks, nexus_network_resolver
 from utils.utils import randfloat, excname
 from tasks.controller import Controller
 
@@ -106,12 +109,11 @@ class Executioner:
                               f" for network {network_name.capitalize()}")
             return False
 
-        common_withdraw_params = action_params["common_withdraw_params"]
-
         cexes_to_choose = []
-        for cex in common_withdraw_params.keys():
-            if network_name.lower() in common_withdraw_params[cex]["networks_to_withdraw"]:
-                cexes_to_choose.append(cex)
+        for cex in action_params["withdraw_on_min_amount_params"].keys():
+            if cex.lower() in ("mexc", "okx", "bitget"):
+                if network_name.lower() in action_params["withdraw_on_min_amount_params"][cex]["networks_to_withdraw"]:
+                    cexes_to_choose.append(cex)
 
         self.logger.info(f"Cexes to choose for refill: {cexes_to_choose}")
 
@@ -132,7 +134,7 @@ class Executioner:
         action_type = action.action_type.lower()
         project_type = action_type.split("_")[0]
         if "random_swap" in action_type:
-            project_type = random.choice(["uniswap", "jumper"])
+            project_type = random.choice(["uniswap", "odos"])
 
         action_function = self.get_function(f"execute_{project_type}_actions")
 
@@ -176,14 +178,14 @@ class Executioner:
 
                 except Exception as e:
                     if settings.logging.debug_logging:
-                        self.logger.exception(f"{excname(e)}. Action {action.action_type} failed: {str(e)}")
+                        self.logger.exception(f"{excname(e)}. Try {self.try_num} for action {action.action_type} failed: '{str(e)}'")
                     else:
-                        self.logger.error(f"{excname(e)}. Action {action.action_type} failed: {str(e)}")
+                        self.logger.warning(f"{excname(e)}. Try {self.try_num} for action {action.action_type} failed: '{str(e)}'")
                     self.try_num += 1
                     await self.sleep(settings.general.retry_delay)
 
             else:
-                return False # this is only if @BaseController.retry is used
+                return False
 
     usdc_networks_mapping = {
         "base": EVMContracts.USDC_Base,
@@ -191,18 +193,21 @@ class Executioner:
         "arbitrum": EVMContracts.USDC_Arbitrum,
     }
 
-    async def execute_jumper_actions(self, action_type: str, action_params: dict, controller: Controller):
-        action_network = action_type.split("_")[-1]
-        if action_network == "random":
-            action_network = random.choice(action_params["swap"]["random_networks_to_swap"])
-            self.logger.info(f"Selected random Jumper network: {action_network.capitalize()}")
 
-        await self.gas_control(controller, action_network)
-
-        balance_check = await self.check_balance_and_withdraw(controller, action_network, action_params)
-        if not balance_check:
-            self.logger.error(f"Oops, balance is still too low, quitting action")
-            return False
+    @prechecks(random_log_label="Jumper network")
+    async def execute_jumper_actions(self, action_type: str, action_params: dict, controller: Controller,
+                                     action_network: str | None = None):
+        # action_network = action_type.split("_")[-1]
+        # if action_network == "random":
+        #     action_network = random.choice(action_params["swap"]["random_networks_to_swap"])
+        #     self.logger.info(f"Selected random Jumper network: {action_network.capitalize()}")
+        #
+        # await self.gas_control(controller, action_network)
+        #
+        # balance_check = await self.check_balance_and_withdraw(controller, action_network, action_params)
+        # if not balance_check:
+        #     self.logger.error(f"Oops, balance is still too low, quitting action")
+        #     return False
 
         jumper = JumperExchange(controller, self.log_context)
         jumper.use_network(action_network)
@@ -279,15 +284,12 @@ class Executioner:
         else:
             raise Exception(f"Swap amounts must be str or float or int: {swap_amounts}")
 
-    async def execute_nexus_actions(self, action_type, action_params: dict, controller: Controller):
-        action_network = action_type.split("_")[-1]
-        nexus_bridge_params = action_params["nexus_bridge_params"]
-        if action_network == "biggest":
-            biggest_balance_network, biggest_balance = await self.get_biggest_usdc_balance(controller,
-                                                        nexus_bridge_params["networks_to_check_balance_for_biggest"])
-            self.logger.info(f"Biggest USDC balance: {biggest_balance} in network {biggest_balance_network.capitalize()}")
 
-            action_network = biggest_balance_network
+    @prechecks(network_resolver=nexus_network_resolver, random_log_label="Nexus network")
+    async def execute_nexus_actions(self, action_type, action_params: dict, controller: Controller,
+                                    action_network: str | None = None,
+                                    ):
+        nexus_bridge_params = action_params["nexus_bridge_params"]
 
         await self.gas_control(controller, action_network)
 
@@ -348,13 +350,12 @@ class Executioner:
 
     async def execute_initial_actions(self, action_type, action_params: dict, controller: Controller):
         init_withdraw_params = action_params["initial_withdraw_params"]
-        common_withdraw_params = action_params["common_withdraw_params"]
 
         cex_name = action_type.split("_")[-1]
         if cex_name == "random":
             cex_name = random.choice(init_withdraw_params["cex_to_random"]).lower()
 
-        networks_to_withdraw = common_withdraw_params[cex_name]["networks_to_withdraw"]
+        networks_to_withdraw = init_withdraw_params[cex_name]["networks_to_withdraw"]
         action_network = random.choice(networks_to_withdraw)
 
         self.logger.info(f"Selected random network for initial withdraw: {action_network.capitalize()},"
@@ -378,21 +379,10 @@ class Executioner:
         cex_withdraw_client = CexWithdraw(cex_name, self.log_context)
         return await cex_withdraw_client.withdraw(withdraw_amount, action_network, network_client)
 
-
-    async def execute_uniswap_actions(self, action_type, action_params: dict, controller: Controller):
-        action_network = action_type.split("_")[-1]
-        if action_network == "random":
-            action_network = random.choice(action_params["swap"]["random_networks_to_swap"])
-            self.logger.info(f"Selected random Uniswap network: {action_network.capitalize()}")
-
-        await self.gas_control(controller, action_network)
-
-        balance_check = await self.check_balance_and_withdraw(controller, action_network, action_params)
-        if not balance_check:
-            self.logger.error(f"Oops, balance is still too low, quitting action")
-            return False
-
-        # self.logger.info(f"Swapping in {action_network}")
+    @prechecks(random_log_label="Uniswap network")
+    async def execute_uniswap_actions(self, action_type, action_params: dict, controller: Controller,
+                                      action_network: str | None = None):
+        # action_network = action_type.split("_")[-1]
 
         uniswap = Uniswap(controller.eth_client, controller.requests_client, self.log_context)
         uniswap.use_network(action_network)
@@ -465,3 +455,65 @@ class Executioner:
             approve_amount = None
 
         return approve_amount
+
+    @prechecks(random_log_label="Velodrome network")
+    async def execute_velodrome_actions(self, action_type, action_params: dict, controller: Controller,
+                                        action_network: str | None = None):
+        # action_network = action_type.split("_")[-1]
+        velodrome = Velodrome(controller.eth_client, controller.requests_client, self.log_context)
+        velodrome.use_network(action_network)
+
+        if action_network != "optimism":
+            self.logger.error(f"Velodrome swap only available for Optimism network")
+
+        swap_params = action_params.get("swap")
+        chain_swap_params = swap_params.get(action_network)
+
+        # self.logger.info(f"{type(chain_swap_params)=}")
+        # if isinstance(chain_swap_params, dict):
+        #     return await self.uniswap_swap(uniswap, chain_swap_params, action_network, results, approve_amounts)
+        # elif isinstance(chain_swap_params, list):
+        #     for token_params in chain_swap_params:
+        #         results = await self.uniswap_swap(uniswap, token_params, action_network, results, approve_amounts)
+        swap_amount = await self.get_evm_swap_amount(velodrome.network_client,
+                                                     chain_swap_params["from_token"], chain_swap_params["amount"])
+        eth_price = await controller.get_price_for_native(action_network)
+
+        if chain_swap_params["from_token"].lower() == "0x0b2c639c533813f4aa9d7837caf62653d097ff85":
+            usdc_address = self.usdc_networks_mapping[action_network]
+            usdc_balance = await velodrome.network_client.wallet.balance(usdc_address)
+            amount_out_eth = TokenAmount(float(usdc_balance.Ether) / eth_price * 0.995, 18, False)
+
+            await velodrome.optimism_swap_from_usdc(swap_amount, amount_out_eth)
+        elif chain_swap_params["to_token"].lower() == "0x0b2c639c533813f4aa9d7837caf62653d097ff85":
+            usdc_amount_out = TokenAmount(float(swap_amount.Ether) * eth_price * 0.995, 6, False)
+
+            await velodrome.optimism_swap_to_usdc(swap_amount, usdc_amount_out)
+        else:
+            self.logger.error(f"Velodrome swap only available for USDC")
+
+
+    @prechecks(random_log_label="Odos network")
+    async def execute_odos_actions(self, action_type, action_params: dict, controller: Controller,
+                                        action_network: str | None = None):
+        odos = Odos(controller.eth_client, controller.requests_client, self.log_context)
+        odos.use_network(action_network)
+
+        swap_params = action_params.get("swap")
+        chain_swap_params = swap_params.get(action_network)
+
+        # self.logger.info(f"{type(chain_swap_params)=}")
+        # if isinstance(chain_swap_params, dict):
+        #     return await self.uniswap_swap(uniswap, chain_swap_params, action_network, results, approve_amounts)
+        # elif isinstance(chain_swap_params, list):
+        #     for token_params in chain_swap_params:
+        #         results = await self.uniswap_swap(uniswap, token_params, action_network, results, approve_amounts)
+        swap_amount = await self.get_evm_swap_amount(odos.network_client,
+                                                     chain_swap_params["from_token"], chain_swap_params["amount"])
+        approve_decimals = chain_swap_params["from_decimals"] if chain_swap_params["from_token"] != "native" else chain_swap_params[
+            "to_decimals"]
+        approve_amounts = action_params.get("usdc_approve_amount")
+
+        approve_amount = self.get_approve_amount(approve_amounts, approve_decimals)
+        return await odos.swap(swap_amount, chain_swap_params["from_token"], chain_swap_params["to_token"],
+                               chain_swap_params["slippage"], approve_amount)

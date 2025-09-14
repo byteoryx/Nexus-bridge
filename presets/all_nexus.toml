@@ -9,21 +9,26 @@ description = "Put here your description"
 "initial_withdraw_cex_bitget" = "Initial Withdraw ETH from Bitget"
 "initial_withdraw_cex_random" = "Initial Withdraw ETH from Random CEX"
 
-# для свапов и бриджей тут указывается ИСХОДЯЩАЯ сеть
-# Jumper
-"jumper_swap_arbitrum" = "Jumper Swap on Arbitrum"
-"jumper_swap_optimism" = "Jumper Swap on Optimism"
-"jumper_swap_base" = "Jumper Swap on Base"
-
-# Uniswap
+## Uniswap
 "uniswap_swap_arbitrum" = "Uniswap Swap on Arbitrum"
 "uniswap_swap_optimism" = "Uniswap Swap on Optimism"
 "uniswap_swap_base" = "Uniswap Swap on Base"
+"uniswap_swap_random" = "Uniswap Swap on random network"
+
+## Odos
+"odos_swap_arbitrum" = "Odos Swap on Arbitrum"
+"odos_swap_optimism" = "Odos Swap on Optimism"
+"odos_swap_base" = "Odos Swap on Base"
+"odos_swap_random" = "Odos Swap on Random network"
 
 # Random swap
 "random_swap_arbitrum" = "Random DEX Swap on Arbitrum"
 "random_swap_optimism" = "Random DEX Swap on Optimism"
 "random_swap_base" = "Random DEX Swap on Base"
+
+#### тут первый рандом это декс, второй рандом это сеть
+# random сети задаются в random_networks_to_swap
+"random_swap_random" = "Random DEX Swap on Random Network"
 
 # Nexus
 "nexus_bridge_usdc_arbitrum" = "Nexus Bridge USDC from Arbitrum"
@@ -43,47 +48,57 @@ description = "Put here your description"
 #usdc_approve_amount = [1000, 10000]
 usdc_approve_amount = "infinity"
 
-[functions_params.common_withdraw_params]
-[functions_params.common_withdraw_params.mexc]
-# Сети для вывода с Mexc
-networks_to_withdraw = ["optimism"]
-
-[functions_params.common_withdraw_params.bitget]
-# Сети для вывода с Bitget
-networks_to_withdraw = ["base", "arbitrum"]
-
-[functions_params.common_withdraw_params.okx]
-# Сети для вывода с Okx
-networks_to_withdraw = ["base", "arbitrum"]
-
 ### Параметры первого вывода под свап USDC
 [functions_params.initial_withdraw_params]
 ### withdraw settings
-ticker = "ETH"
+ticker = "ETH" # USDC
 
 # тут указываем биржи для рандомного выбора (если например захочется Мекс убрать)
-cex_to_random = ["Mexc", "Bitget", "Okx"]
+cex_to_random = ["mexc", "bitget", "okx"]
 
 # ЭТО ДЛЯ ПЕРВОГО БОЛЬШОГО ВЫВОДА С БИРЖИ
-withdraw_eth_arbitrum_amount = [0.1, 0.2]
-withdraw_eth_optimism_amount = [0.1, 0.2]
-withdraw_eth_base_amount = [0.1, 0.2]
+withdraw_eth_arbitrum_amount = [0.001, 0.002]
+withdraw_eth_optimism_amount = [0.001, 0.002]
+withdraw_eth_base_amount = [0.001, 0.002]
+
+[functions_params.initial_withdraw_params.mexc]
+# Сети для ПЕРВОГО вывода с Mexc
+networks_to_withdraw = ["optimism"]
+
+[functions_params.initial_withdraw_params.bitget]
+# Сети для ПЕРВОГО вывода с Bitget
+networks_to_withdraw = ["base", "arbitrum"]
+
+[functions_params.initial_withdraw_params.okx]
+# Сети для ПЕРВОГО вывода с Okx
+networks_to_withdraw = ["base", "arbitrum"]
 
 
 ### Параметры для выводов при недостатке нативки в сетях
 [functions_params.withdraw_on_min_amount_params]
 # биржа для рефилла выбирается рандомно
-cex_to_refill = ["Mexc", "Bitget", "Okx"]
+cex_to_refill = ["mexc", "bitget", "okx"]
 
-min_eth_arbitrum_amount = 0.0005
-min_eth_optimism_amount = 0.0005
-min_eth_base_amount = 0.0005
+min_eth_arbitrum_amount = 0.05
+min_eth_optimism_amount = 0.05
+min_eth_base_amount = 0.05
 
 # ЭТО ДЛЯ РЕФИЛЛОВ КОГДА НА ГАЗ НЕ ХВАТАЕТ
 withdraw_eth_arbitrum_amount = [0.001, 0.002]
 withdraw_eth_optimism_amount = [0.001, 0.002]
 withdraw_eth_base_amount = [0.001, 0.002]
 
+[functions_params.withdraw_on_min_amount_params.mexc]
+# Сети для РЕФИЛЛА с Mexc
+networks_to_withdraw = ["optimism"]
+
+[functions_params.withdraw_on_min_amount_params.bitget]
+# Сети для РЕФИЛЛА с Bitget
+networks_to_withdraw = ["base", "arbitrum"]
+
+[functions_params.withdraw_on_min_amount_params.okx]
+# Сети для РЕФИЛЛА с Okx
+networks_to_withdraw = ["base", "arbitrum"]
 
 ### Параметры для бриджей в Нексусе
 [functions_params.nexus_bridge_params]

@@ -132,7 +132,8 @@ class JumperExchange(BaseEVMTaskClass["JumperExchange"]):
             return True
         return False
 
-    async def _swap_with_permit(self, tool_key, transaction_data_dict, from_token_address, best_output_route, slippage, token_from, from_amount,
+    async def _swap_with_permit(self, tool_key, transaction_data_dict, from_token_address, best_output_route, slippage,
+                                token_from, from_amount,
                                 steps, chain_id, from_token_symbol):
         for _ in range(5):
             try:
@@ -167,9 +168,14 @@ class JumperExchange(BaseEVMTaskClass["JumperExchange"]):
                 # if "permit2" in data["domain"]["name"].lower():
                 # if "permit" in data["types"]["name"].lower():
                 approve_contract = data["message"]["spender"]
-                approve = await self.network_client.transactions.approve_interface(token_from,
-                                                                                   approve_contract,
-                                                                                   from_amount)
+                # approve = await self.network_client.transactions.approve_interface(token_from,
+                #                                                                    approve_contract,
+                #                                                                    from_amount)
+                approve = await self.network_client.transactions.approve_interface(token=token_from,
+                                                                                   spender=approve_contract,
+                                                                                   amount_in_tx=from_amount,)
+                                                                                   # amount_to_approve=approve_amount,
+                                                                                   # approve_inf=approve_inf)
                 if approve:
                     # self._logger.debug(f"Signing data: {data}")
                     selected_step = steps[0]
