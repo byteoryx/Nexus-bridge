@@ -272,9 +272,9 @@ async def export_accounts_results_to_excel():
 
 
 async def main_menu():
-    cprint(text2art(text="fastfoodsofts", font="crawford", chr_ignore=True, space=0),
+    cprint(text2art(text="NexusSoft", font="crawford", chr_ignore=True, space=0),
            color='blue', attrs=['bold'])
-    cprint("https://t.me/fastfoodsofts", color='green', on_color='on_grey', attrs=['bold'])
+    cprint("NexusSoft", color='green', on_color='on_grey', attrs=['bold'])
     print('\n')
 
     while True:
