@@ -368,18 +368,30 @@ class Executioner:
         if cex_name == "random":
             cex_name = random.choice(init_withdraw_params["cex_to_random"]).lower()
 
-        networks_to_withdraw = init_withdraw_params[cex_name]["networks_to_withdraw"]
+        if "eth" in  action_type:
+            coin = "ETH"
+        elif "usdc" in action_type:
+            coin = "USDC"
+        else:
+            raise ValueError(f"Incorrect ticker for withdraw: {action_type}")
+
+        if coin == "ETH":
+            networks_to_withdraw = init_withdraw_params[cex_name]["networks_to_withdraw_eth"]
+        elif coin == "USDC":
+            networks_to_withdraw = init_withdraw_params[cex_name]["networks_to_withdraw_usdc"]
+
         action_network = random.choice(networks_to_withdraw)
 
         self.logger.info(f"Selected random network for initial withdraw: {action_network.capitalize()},"
                          f" from {cex_name.capitalize()}")
 
-        # coin = init_withdraw_params["ticker"]
         network_client = getattr(controller.eth_client, action_network.lower())
 
         withdraw_amounts = None
         for key in init_withdraw_params:
-            if "withdraw_eth" in key and action_network in key:
+            if coin == "ETH" and "withdraw_eth" in key and action_network in key:
+                withdraw_amounts = init_withdraw_params[key]
+            elif coin == "USDC" and "withdraw_usdc" in key and action_network in key:
                 withdraw_amounts = init_withdraw_params[key]
 
         if not withdraw_amounts:
@@ -390,7 +402,7 @@ class Executioner:
         withdraw_amount = randfloat(*withdraw_amounts, step=0.0000001)
 
         cex_withdraw_client = CexWithdraw(cex_name, self.log_context)
-        return await cex_withdraw_client.withdraw(withdraw_amount, action_network, network_client)
+        return await cex_withdraw_client.withdraw(withdraw_amount, coin, action_network, network_client)
 
     @prechecks(random_log_label="Uniswap network")
     async def execute_uniswap_actions(self, action_type, action_params: dict, controller: Controller,
@@ -533,7 +545,6 @@ class Executioner:
         return results
 
     async def odos_swap(self, odos, token_params, result_string, results, approve_amounts):
-
         try:
             swap_amount = await self.get_evm_swap_amount(odos.network_client,
                                                          token_params["from_token"], token_params["amount"])
@@ -549,3 +560,33 @@ class Executioner:
             results[result_string] = "Insufficient funds"
 
         return results
+
+
+    async def execute_deposit_actions(self, action_type, action_params: dict, controller: Controller):
+        action_network = action_type.split("_")[-1]
+        network_client: NetworkClient = getattr(controller.eth_client, action_network)
+        usdc_contract = self.usdc_networks_mapping[action_network]
+        deposit_address = self.account.cex_deposit_address
+        deposit_params = action_params["deposit_params"]
+        if deposit_params["deposit_usdc"]:
+            usdc_balance = await network_client.wallet.balance(usdc_contract)
+            if usdc_balance.Ether == 0:
+                self.logger.warning(f"Tried to deposit USDC to CEX but balance is 0.")
+            else:
+                usdc_deposit_amount = await self.get_evm_swap_amount(network_client, usdc_contract.address,
+                                                                     deposit_params["usdc_deposit_amounts"])
+                self.logger.info(f"Depositing {usdc_deposit_amount.Ether} USDC to {deposit_address}")
+
+                await network_client.transactions.transfer(usdc_deposit_amount, deposit_address, usdc_contract)
+
+
+        eth_deposit_amount = await self.get_evm_swap_amount(network_client, "native",
+                                                             deposit_params["eth_deposit_amounts"])
+
+        self.logger.info(f"Depositing {eth_deposit_amount.Ether} ETH to {deposit_address}")
+
+        await network_client.transactions.transfer(eth_deposit_amount, deposit_address)
+        return True
+
+    #- Добавить в софте возможность вывода помимо ETH также USDC (настройки по аналогии с ETH - выбор биржи, выбор сетей,
+    # выбор 1 рандом сети из нескольких (но Refuel не потребуется, так как USDC не расходуется))

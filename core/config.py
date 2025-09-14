@@ -17,3 +17,4 @@ CEX_DIR = os.path.join(ROOT_DIR, 'libs', 'cex')
 
 PK_TXT_FILE = os.path.join(ROOT_DIR, 'private_keys.txt')
 PROXIES_TXT_FILE = os.path.join(ROOT_DIR, 'proxies.txt')
+CEX_DEPOSIT_ADDRESSES_TXT_FILE = os.path.join(ROOT_DIR, 'deposit_addresses.txt')

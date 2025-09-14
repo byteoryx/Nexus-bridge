@@ -20,6 +20,7 @@ class AccountData:
     chrome_version: str | None = None
 
     max_hyperlane_fees: float | None = None
+    cex_deposit_address: str | None = None
 
     def __post_init__(self):
         # Убираем пробелы и переносы строк
@@ -45,18 +46,22 @@ class AccountData:
             eth_client = EthClient(private_key=self.evm_private_key)
             self.evm_address = eth_client.w3_account.address
 
+        self.cex_deposit_address = self.cex_deposit_address.strip()
+
 class TxtManager:
     def __init__(self):
         self.spare_proxies: set[str] = set()  # Множество запасных прокси
         self.logger = get_logger(class_name=self.__class__.__name__)
 
-    def load_accounts(self, private_key_path: str = "private_keys.txt", proxies_path: str = "proxies.txt"):
+    def load_accounts(self, private_key_path: str = "private_keys.txt", proxies_path: str = "proxies.txt",
+                      cex_deposit_addresses_path: str = "deposit_addresses.txt"):
         pks = []
         proxies = []
         proxies_set = set()
         used_proxies = set()
 
         accounts = []
+        deposit_addresses = []
 
         with open(private_key_path, "r") as f:
             lines = f.readlines()
@@ -70,12 +75,25 @@ class TxtManager:
                 proxies.append(line.strip())
                 proxies_set.add(line.strip())
 
+        with open(cex_deposit_addresses_path, "r") as f:
+            lines = f.readlines()
+            for line in lines:
+                deposit_addresses.append(line.strip())
+
+        if len(deposit_addresses) != len(pks):
+            self.logger.warning(f"Deposit addresses {len(deposit_addresses)} and private keys {len(pks)}"
+                                f" are not the same length")
+            to_continue = input("Do you want to continue (y/n)?")
+            if to_continue == "n" or to_continue == "N" or to_continue == "no":
+                exit(1)
+
         for i, pk in enumerate(pks):
             account = AccountData(
                 name="acc" + str(i+1),
                 evm_private_key=pk,
                 proxy=proxies[i] if proxies else None,
-                max_hyperlane_fees=randfloat(*settings.general.max_hyperlane_fees)
+                max_hyperlane_fees=randfloat(*settings.general.max_hyperlane_fees),
+                cex_deposit_address=deposit_addresses[i]
             )
 
             accounts.append(account)

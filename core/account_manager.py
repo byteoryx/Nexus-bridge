@@ -6,7 +6,7 @@ from pathlib import Path
 
 from sqlalchemy.orm import joinedload
 
-from core.config import PK_TXT_FILE, PROXIES_TXT_FILE
+from core.config import PK_TXT_FILE, PROXIES_TXT_FILE, CEX_DEPOSIT_ADDRESSES_TXT_FILE
 from core.db_utils.db import db
 from core.db_utils.models import Account, RouteAction, RouteStatus, Route
 from core.txt_manager import TxtManager
@@ -40,7 +40,7 @@ class AccountManager:
 
     def load_accounts_from_txt(self):
         txt_manager = TxtManager()
-        accounts, spare_proxies = txt_manager.load_accounts(PK_TXT_FILE, PROXIES_TXT_FILE)
+        accounts, spare_proxies = txt_manager.load_accounts(PK_TXT_FILE, PROXIES_TXT_FILE, CEX_DEPOSIT_ADDRESSES_TXT_FILE)
         db.add_accounts(accounts, spare_proxies)
 
 

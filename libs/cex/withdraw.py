@@ -58,7 +58,7 @@ class CexWithdraw:
         else:
             return False
 
-    async def withdraw(self, withdraw_amount: float, network_name: str, network_client: NetworkClient):
+    async def withdraw(self, withdraw_amount: float, code: str, network_name: str, network_client: NetworkClient):
         cex_settings = getattr(settings.cex, self.cex_name)
         cex = getattr(ccxt, self.cex_name)({
             "apiKey": cex_settings.api_key,
@@ -73,10 +73,10 @@ class CexWithdraw:
 
         for attempt in range(settings.general.number_of_retries):
             try:
-                code = network_client.network.coin_symbol
+                # code = network_client.network.coin_symbol
                 params = {'network': self.eth_cex_networks_dict[self.cex_name][network_name.lower()]}
 
-                self.logger.info(f"Starting to withdraw {withdraw_amount} {network_client.network.coin_symbol}"
+                self.logger.info(f"Starting to withdraw {withdraw_amount} {code}"
                                  f" to {network_name.capitalize()} from {self.cex_name.capitalize()}")
                 withdrawal = await cex.withdraw(code, withdraw_amount, network_client.w3_account.address, None, params)
 

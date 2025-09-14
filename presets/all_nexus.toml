@@ -4,10 +4,15 @@ description = "Put here your description"
 
 [functions]
 # Withdraw
-"initial_withdraw_cex_mexc" = "Initial Withdraw ETH from Mexc"
-"initial_withdraw_cex_okx" = "Initial Withdraw ETH from Okx"
-"initial_withdraw_cex_bitget" = "Initial Withdraw ETH from Bitget"
-"initial_withdraw_cex_random" = "Initial Withdraw ETH from Random CEX"
+"initial_withdraw_eth_cex_mexc" = "Initial Withdraw ETH from Mexc"
+"initial_withdraw_eth_cex_okx" = "Initial Withdraw ETH from Okx"
+"initial_withdraw_eth_cex_bitget" = "Initial Withdraw ETH from Bitget"
+"initial_withdraw_eth_cex_random" = "Initial Withdraw ETH from Random CEX"
+
+"initial_withdraw_usdc_cex_mexc" = "Initial Withdraw USDC from Mexc"
+"initial_withdraw_usdc_cex_okx" = "Initial Withdraw USDC from Okx"
+"initial_withdraw_usdc_cex_bitget" = "Initial Withdraw USDC from Bitget"
+"initial_withdraw_usdc_cex_random" = "Initial Withdraw USDC from Random CEX"
 
 ## Uniswap
 "uniswap_swap_to_usdc_arbitrum" = "Uniswap Swap to USDC on Arbitrum"
@@ -53,6 +58,9 @@ description = "Put here your description"
 # если biggest - то будет всегда бриджить из той сети, где баланс USDC больше
 "nexus_bridge_usdc_biggest" = "Nexus Bridge USDC from biggest balance network"
 
+"deposit_cex_arbitrum" = "Deposit on Arbitrum to CEX"
+"deposit_cex_base" = "Deposit on Arbitrum to CEX"
+"deposit_cex_optimism" = "Deposit on Arbitrum to CEX"
 
 [repeat_actions]
 # здесь задаются диапазоны для рандомных повторений действий (у каждого акка будет разное количество повторений)
@@ -66,8 +74,6 @@ usdc_approve_amount = "infinity"
 ### Параметры первого вывода под свап USDC
 [functions_params.initial_withdraw_params]
 ### withdraw settings
-ticker = "ETH" # USDC
-
 # тут указываем биржи для рандомного выбора (если например захочется Мекс убрать)
 cex_to_random = ["mexc", "bitget", "okx"]
 
@@ -76,17 +82,24 @@ withdraw_eth_arbitrum_amount = [0.001, 0.002]
 withdraw_eth_optimism_amount = [0.001, 0.002]
 withdraw_eth_base_amount = [0.001, 0.002]
 
+withdraw_usdc_arbitrum_amount = [100, 200]
+withdraw_usdc_optimism_amount = [100, 200]
+withdraw_usdc_base_amount = [100, 200]
+
 [functions_params.initial_withdraw_params.mexc]
 # Сети для ПЕРВОГО вывода с Mexc
-networks_to_withdraw = ["optimism"]
+networks_to_withdraw_eth = ["optimism"]
+networks_to_withdraw_usdc = ["optimism"]
 
 [functions_params.initial_withdraw_params.bitget]
 # Сети для ПЕРВОГО вывода с Bitget
-networks_to_withdraw = ["base", "arbitrum"]
+networks_to_withdraw_eth = ["base", "arbitrum"]
+networks_to_withdraw_usdc = ["base", "arbitrum"]
 
 [functions_params.initial_withdraw_params.okx]
 # Сети для ПЕРВОГО вывода с Okx
-networks_to_withdraw = ["base", "arbitrum"]
+networks_to_withdraw_eth = ["base", "arbitrum"]
+networks_to_withdraw_usdc = ["base", "arbitrum"]
 
 
 ### Параметры для выводов при недостатке нативки в сетях
@@ -185,5 +198,14 @@ swap_mode = "to_eth" # "to_eth"
 amount = ["100", "100"]
 slippage = 0.5 # %
 
-# POSSIBLE SWAP MODES
-# ['to_usdc', 'to_eth']
+
+# Параметры депозитов на биржу
+[functions_params.deposit_params]
+# если эта настройка true, то вне зависимости от того были свапы до этого или нет,
+# сначала попытается отправить USDC, затем ETH
+deposit_usdc = true
+
+# можно не менять, если отправляем весь USDC
+usdc_deposit_amounts = ["100", "100"]
+
+eth_deposit_amounts = ["80", "90"]
