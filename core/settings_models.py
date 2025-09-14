@@ -142,6 +142,8 @@ class GeneralSettings:
     timeout: int = 30
     SHUFFLE_ACCOUNTS: bool = False
     SHUFFLE_ACTIONS: bool = False
+    max_hyperlane_fees: list[int] = field(default_factory=list)
+    hyperlane_fees_checker_start_date: str = field(default_factory=str)
 
 
 @dataclass

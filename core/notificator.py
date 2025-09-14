@@ -75,7 +75,7 @@ class Notificator:
                 else:  # Смешанные результаты
                     actions_str += f"⚠️ {action_name} - ✅{counts['success']}, ❌{counts['fail']}\n"
 
-            text = (f"🍔🍔🍔FastFoodSofts🍔🍔🍔\n\n"
+            text = (f"NexusSoft\n\n"
                     f"Account name: {account.name} completed route\n\n"
                     f"{total_actions} action(s) in route\n"
                     f"{actions_str}\n"
@@ -89,7 +89,7 @@ class Notificator:
 
     async def send_notification_for_all_done(self, account_max):
         try:
-            text = (f"🍔🍔🍔FastFoodSofts🍔🍔🍔\n\n"
+            text = (f"NexusSoft\n\n"
                     f"Work finished!\n\n"
                     f"Total account done: {account_max}✅")
             await self._send_telegram_notification(text)

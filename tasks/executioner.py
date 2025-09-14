@@ -151,7 +151,7 @@ class Executioner:
                         self.logger.success(f"Completed action {action.action_name}")
                     elif isinstance(result, dict):
                         for key, value in result.items():
-                            if "insufficient" in value.lower():
+                            if isinstance(value, str) and "insufficient" in value.lower():
                                 self.logger.error(f"Failed action {action.action_name} with reason: {value}")
                                 return False
 
@@ -286,24 +286,30 @@ class Executioner:
             raise Exception(f"Swap amounts must be str or float or int: {swap_amounts}")
 
 
-    @prechecks(network_resolver=nexus_network_resolver, random_log_label="Nexus network")
-    async def execute_nexus_actions(self, action_type, action_params: dict, controller: Controller,
-                                    action_network: str | None = None,
-                                    ):
+    async def execute_nexus_actions(self, action_type, action_params: dict, controller: Controller):
+        action_network = action_type.split("_")[-1]
         nexus_bridge_params = action_params["nexus_bridge_params"]
 
-        # checker = HyperLaneFeeChecker(controller.eth_client, controller.requests_client, self.log_context)
-        # threshold = TokenAmount(self.account.max_hyperlane_fees, 18, False)
-        # if "start_date" in nexus_bridge_params:
-        #     start_date = nexus_bridge_params["start_date"]
-        # else:
-        #     start_date = "2000-01-01T00:00:00"
-        #     self.logger.warning(f"No start date provided for Nexus bridge. Using default date {start_date}")
-        #
-        # total_igp, messages_count = await checker.get_total_fees(start_date)
-        # if total_igp > threshold:
-        #     self.logger.warning(f"Total IGP after {start_date} is {total_igp} IGP, higher than threshold {threshold}. Skipping bridge")
+        checker = HyperLaneFeeChecker(controller.eth_client, controller.requests_client, self.log_context)
+        threshold = self.account.max_hyperlane_fees
 
+        start_date = settings.general.hyperlane_fees_checker_start_date
+        total_igp, messages_count = await checker.get_total_fees(start_date)
+        eth_price = await controller.get_price_for_native("optimism")
+        total_igp_usd = float(total_igp.Ether) * eth_price
+
+        if total_igp_usd > threshold:
+            self.logger.warning(f"Total IGP after {start_date} is {total_igp_usd} USD,"
+                                f" higher than threshold {threshold}. Skipping bridge.")
+            return True
+
+        if action_network == "biggest":
+            biggest_balance_network, biggest_balance = await self.get_biggest_usdc_balance(controller,
+                                                    nexus_bridge_params["networks_to_check_balance_for_biggest"])
+            self.logger.info(
+                f"Biggest USDC balance: {biggest_balance} in network {biggest_balance_network.capitalize()}")
+
+            action_network = biggest_balance_network
 
         dest_networks_list: list = nexus_bridge_params["networks_to_bridge_to"]
         if action_network in dest_networks_list:
@@ -389,8 +395,6 @@ class Executioner:
     @prechecks(random_log_label="Uniswap network")
     async def execute_uniswap_actions(self, action_type, action_params: dict, controller: Controller,
                                       action_network: str | None = None):
-        # action_network = action_type.split("_")[-1]
-
         uniswap = Uniswap(controller.eth_client, controller.requests_client, self.log_context)
         uniswap.use_network(action_network)
         swap_params = action_params.get("swap")
@@ -401,16 +405,27 @@ class Executioner:
         approve_amounts = action_params.get("usdc_approve_amount")
 
         if isinstance(chain_swap_params, dict):
-            return await self.uniswap_swap(uniswap, chain_swap_params, action_network, results, approve_amounts)
+            result_string = f"{action_network} from {chain_swap_params['from_token']} to {chain_swap_params['to_token']}"
+
+            return await self.uniswap_swap(uniswap, chain_swap_params, result_string, results, approve_amounts)
         elif isinstance(chain_swap_params, list):
             for token_params in chain_swap_params:
-                results = await self.uniswap_swap(uniswap, token_params, action_network, results, approve_amounts)
+                result_string = f"{action_network} from {token_params['from_token']} to {token_params['to_token']}"
+
+                if token_params["swap_mode"] == "to_usdc" and "to_usdc" in action_type:
+                    self.logger.info(f"Starting to swap ETH to USDC")
+                    results = await self.uniswap_swap(uniswap, token_params, result_string, results, approve_amounts)
+
+                elif token_params["swap_mode"] == "to_eth" and "to_eth" in action_type:
+                    self.logger.info(f"Starting to swap USDC to ETH")
+                    results = await self.uniswap_swap(uniswap, token_params, result_string, results, approve_amounts)
+
+                # else:
+                #     raise Exception(f"Incorrect swap mode: {token_params['swap_mode']}, ({action_type=})")
 
         return results
 
-    async def uniswap_swap(self, uniswap, token_params, action_network, results, approve_amounts):
-        result_string = f"{action_network} from {token_params['from_token']} to {token_params['to_token']}"
-
+    async def uniswap_swap(self, uniswap, token_params, result_string, results, approve_amounts):
         try:
             swap_amount = await self.get_evm_swap_amount(uniswap.network_client,
                                                          token_params["from_token"], token_params["amount"])
@@ -428,21 +443,6 @@ class Executioner:
                 approve_amount=approve_amount
             )
 
-            if token_params["swap_mode"] == "to_and_from":
-                if token_params["to_token"] == "native":
-                    raise Exception(f"You are trying to swap back all native into token {token_params['from_token']}")
-
-                swap_amount = await uniswap.network_client.wallet.balance(token_params["to_token"])
-                result_string = f"{action_network} from {token_params['to_token']} to {token_params['from_token']}"
-                results[result_string] = await uniswap.swap_exact_in(
-                    amount_from=swap_amount,
-                    token_from=token_params["to_token"],
-                    token_to=token_params["from_token"],
-                    from_decimals=token_params["to_decimals"],
-                    to_decimals=token_params["from_decimals"],
-                    slippage=token_params["slippage"],  # не делим на 100
-                    approve_amount=approve_amount
-                )
         except InsufficientFundsException as e:
             self.logger.error(f"{excname(e)} {str(e)}")
             results[result_string] = "Insufficient funds"
@@ -508,19 +508,44 @@ class Executioner:
 
         swap_params = action_params.get("swap")
         chain_swap_params = swap_params.get(action_network)
-
-        # self.logger.info(f"{type(chain_swap_params)=}")
-        # if isinstance(chain_swap_params, dict):
-        #     return await self.uniswap_swap(uniswap, chain_swap_params, action_network, results, approve_amounts)
-        # elif isinstance(chain_swap_params, list):
-        #     for token_params in chain_swap_params:
-        #         results = await self.uniswap_swap(uniswap, token_params, action_network, results, approve_amounts)
-        swap_amount = await self.get_evm_swap_amount(odos.network_client,
-                                                     chain_swap_params["from_token"], chain_swap_params["amount"])
-        approve_decimals = chain_swap_params["from_decimals"] if chain_swap_params["from_token"] != "native" else chain_swap_params[
-            "to_decimals"]
         approve_amounts = action_params.get("usdc_approve_amount")
+        results = {}
 
-        approve_amount = self.get_approve_amount(approve_amounts, approve_decimals)
-        return await odos.swap(swap_amount, chain_swap_params["from_token"], chain_swap_params["to_token"],
-                               chain_swap_params["slippage"], approve_amount)
+        if isinstance(chain_swap_params, dict):
+            result_string = f"{action_network} from {chain_swap_params['from_token']} to {chain_swap_params['to_token']}"
+
+            return await self.odos_swap(odos, chain_swap_params, result_string, results, approve_amounts)
+
+        elif isinstance(chain_swap_params, list):
+            for token_params in chain_swap_params:
+                result_string = f"{action_network} from {token_params['from_token']} to {token_params['to_token']}"
+
+                if token_params["swap_mode"] == "to_usdc" and "to_usdc" in action_type:
+                    self.logger.info(f"Starting to swap ETH to USDC")
+                    results = await self.odos_swap(odos, token_params, result_string, results, approve_amounts)
+
+                elif token_params["swap_mode"] == "to_eth" and "to_eth" in action_type:
+                    self.logger.info(f"Starting to swap USDC to ETH")
+                    results = await self.odos_swap(odos, token_params, result_string, results, approve_amounts)
+
+                # else:
+                #     raise Exception(f"Incorrect swap mode: {token_params['swap_mode']}, ({action_type=})")
+        return results
+
+    async def odos_swap(self, odos, token_params, result_string, results, approve_amounts):
+
+        try:
+            swap_amount = await self.get_evm_swap_amount(odos.network_client,
+                                                         token_params["from_token"], token_params["amount"])
+
+            approve_decimals = token_params["from_decimals"] if token_params["from_token"] != "native" else token_params["to_decimals"]
+            approve_amount = self.get_approve_amount(approve_amounts, approve_decimals)
+
+            results[result_string] = await odos.swap(swap_amount, token_params["from_token"], token_params["to_token"],
+                               token_params["slippage"], approve_amount)
+
+        except InsufficientFundsException as e:
+            self.logger.error(f"{excname(e)} {str(e)}")
+            results[result_string] = "Insufficient funds"
+
+        return results

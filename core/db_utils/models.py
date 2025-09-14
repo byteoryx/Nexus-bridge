@@ -22,7 +22,7 @@ class Account(Base):
     user_agent: Mapped[str] = mapped_column(nullable=True)
     os_user_agent: Mapped[str] = mapped_column(nullable=True)
     chrome_version: Mapped[str] = mapped_column(nullable=True)
-    # max_hyperlane_fees: Mapped[float] = mapped_column(nullable=True)
+    max_hyperlane_fees: Mapped[float] = mapped_column(nullable=True)
 
     # blockchains
     evm_private_key: Mapped[str] = mapped_column(unique=True, index=True, nullable=True)

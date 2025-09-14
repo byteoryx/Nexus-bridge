@@ -1,30 +1,45 @@
 [preset]
-name = "Only initial swaps from ETH to USDC"
+name = "All swaps"
 description = "Put here your description"
 
 [functions]
 # для свапов и бриджей тут указывается ИСХОДЯЩАЯ сеть
 
 ## Uniswap
-#"uniswap_swap_arbitrum" = "Uniswap Swap on Arbitrum"
-#"uniswap_swap_optimism" = "Uniswap Swap on Optimism"
-#"uniswap_swap_base" = "Uniswap Swap on Base"
-#"uniswap_swap_random" = "Uniswap Swap on random network"
+"uniswap_swap_to_usdc_arbitrum" = "Uniswap Swap to USDC on Arbitrum"
+#"uniswap_swap_to_usdc_optimism" = "Uniswap Swap to USDC on Optimism"
+#"uniswap_swap_to_usdc_base" = "Uniswap Swap to USDC on Base"
+#"uniswap_swap_to_usdc_random" = "Uniswap Swap to USDC on random network"
+#
+"uniswap_swap_to_eth_arbitrum" = "Uniswap Swap to ETH on Arbitrum"
+#"uniswap_swap_to_eth_optimism" = "Uniswap Swap to ETH on Optimism"
+#"uniswap_swap_to_eth_base" = "Uniswap Swap to ETH on Base"
+#"uniswap_swap_to_eth_random" = "Uniswap Swap to ETH on random network"
 
 ## Odos
-#"odos_swap_arbitrum" = "Odos Swap on Arbitrum"
-"odos_swap_optimism" = "Odos Swap on Optimism"
-#"odos_swap_base" = "Odos Swap on Base"
-#"odos_swap_random" = "Odos Swap on Random network"
+#"odos_swap_to_usdc_arbitrum" = "Odos Swap to USDC on Arbitrum"
+#"odos_swap_to_usdc_optimism" = "Odos Swap to USDC on Optimism"
+#"odos_swap_to_usdc_base" = "Odos Swap to USDC on Base"
+#"odos_swap_to_usdc_random" = "Odos Swap to USDC on random network"
+#
+#"odos_swap_to_eth_arbitrum" = "Odos Swap to ETH on Arbitrum"
+#"odos_swap_to_eth_optimism" = "Odos Swap to ETH on Optimism"
+#"odos_swap_to_eth_base" = "Odos Swap to ETH on Base"
+#"odos_swap_to_eth_random" = "Odos Swap to ETH on random network"
+#
+## Random swap
+#"random_swap_to_usdc_arbitrum" = "Random DEX Swap to USDC on Arbitrum"
+#"random_swap_to_usdc_optimism" = "Random DEX Swap to USDC on Optimism"
+#"random_swap_to_usdc_base" = "Random DEX Swap to USDC on Base"
+##### тут первый рандом — это DEX, второй — сеть
+## random сети задаются в random_networks_to_swap
+#"random_swap_to_usdc_random" = "Random DEX Swap to USDC on random network"
+#
+#"random_swap_to_eth_arbitrum" = "Random DEX Swap to ETH on Arbitrum"
+#"random_swap_to_eth_optimism" = "Random DEX Swap to ETH on Optimism"
+#"random_swap_to_eth_base" = "Random DEX Swap to ETH on Base"
+#"random_swap_to_eth_random" = "Random DEX Swap to ETH on random network"
 
-# Random swap
-#"random_swap_arbitrum" = "Random DEX Swap on Arbitrum"
-#"random_swap_optimism" = "Random DEX Swap on Optimism"
-#"random_swap_base" = "Random DEX Swap on Base"
-
-#### тут первый рандом это декс, второй рандом это сеть
-# random сети задаются в random_networks_to_swap
-"random_swap_random" = "Random DEX Swap on Random Network"
 
 # Velodrome - только оптимизм - еще не работает, проблемы с входными данными
 #"velodrome_swap_optimism" = "Swap Velodrome on Optimism"
@@ -68,9 +83,9 @@ networks_to_withdraw = ["base", "arbitrum"]
 # биржа для рефилла выбирается рандомно
 cex_to_refill = ["mexc", "bitget", "okx"]
 
-min_eth_arbitrum_amount = 0.001
-min_eth_optimism_amount = 0.001
-min_eth_base_amount = 0.001
+min_eth_arbitrum_amount = 0.000001
+min_eth_optimism_amount = 0.000001
+min_eth_base_amount = 0.000001
 
 # ЭТО ДЛЯ РЕФИЛЛОВ КОГДА НА ГАЗ НЕ ХВАТАЕТ
 withdraw_eth_arbitrum_amount = [0.001, 0.002]
@@ -104,35 +119,60 @@ networks_to_bridge_to = ["base", "arbitrum", "optimism"]
 [functions_params.swap]
 random_networks_to_swap = ["base", "arbitrum", "optimism"]
 
-[functions_params.swap.base]
+# BASE SWAP PARAMETERS
+[[functions_params.swap.base]]
+from_token = "native"
+from_decimals = 18
+to_token = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
+to_decimals = 6
+swap_mode = "to_usdc" # "to_eth"
+amount = ["20", "30"]
+#amount = [1.001 , 1.003]
+slippage = 0.5 # %
+
+[[functions_params.swap.base]]
 from_token = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
 from_decimals = 6
 to_token = "native"
 to_decimals = 18
-swap_mode = "only_to" # "to_and_from"
-amount = [1 , 2]
-#amount = [1.001 , 1.003]
+swap_mode = "to_eth" # "to_eth"
+amount = ["100", "100"]
 slippage = 0.5 # %
 
-
-[functions_params.swap.optimism]
+# OPTIMISM SWAP PARAMETERS
+[[functions_params.swap.optimism]]
 from_token = "native"
 from_decimals = 18
 to_token = "0x0b2c639c533813f4aa9d7837caf62653d097ff85"
 to_decimals = 6
-swap_mode = "only_to"
-amount = ["5" , "10"]
+swap_mode = "to_usdc" # "to_eth"
+amount = ["20", "30"]
 slippage = 0.5 # %
 
-[functions_params.swap.arbitrum]
+[[functions_params.swap.optimism]]
+from_token = "0x0b2c639c533813f4aa9d7837caf62653d097ff85"
+from_decimals = 6
+to_token = "native"
+to_decimals = 18
+swap_mode = "to_eth" # "to_eth"
+amount = ["100", "100"]
+slippage = 0.5 # %
+
+# ARBITRUM SWAP PARAMETERS
+[[functions_params.swap.arbitrum]]
+from_token = "native"
+from_decimals = 18
+to_token = "0xaf88d065e77c8cc2239327c5edb3a432268e5831"
+to_decimals = 6
+swap_mode = "to_usdc" # "to_eth"
+amount = ["20", "30"]
+slippage = 0.5 # %
+
+[[functions_params.swap.arbitrum]]
 from_token = "0xaf88d065e77c8cc2239327c5edb3a432268e5831"
 from_decimals = 6
 to_token = "native"
 to_decimals = 18
-swap_mode = "only_to"
-amount = [1 , 2]
+swap_mode = "to_eth" # "to_eth"
+amount = ["100", "100"]
 slippage = 0.5 # %
-
-# POSSIBLE SWAP MODES
-# to_and_from - swaps back all available amount
-# ['only_to', 'to_and_from']

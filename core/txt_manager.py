@@ -1,8 +1,10 @@
 from dataclasses import dataclass
 
+from core.init_settings import settings
 from libs.blockchains.eth_async.ethclient import EthClient
 from core.logger import get_logger
 from libs.requests.session import get_ua_parameters
+from utils.utils import randfloat
 
 
 @dataclass
@@ -16,6 +18,8 @@ class AccountData:
     user_agent: str | None = None
     os_user_agent: str | None = None
     chrome_version: str | None = None
+
+    max_hyperlane_fees: float | None = None
 
     def __post_init__(self):
         # Убираем пробелы и переносы строк
@@ -71,6 +75,7 @@ class TxtManager:
                 name="acc" + str(i+1),
                 evm_private_key=pk,
                 proxy=proxies[i] if proxies else None,
+                max_hyperlane_fees=randfloat(*settings.general.max_hyperlane_fees)
             )
 
             accounts.append(account)

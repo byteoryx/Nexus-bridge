@@ -1,4 +1,6 @@
 [general]
+max_hyperlane_fees = [10, 15] # диапазон в долларах
+hyperlane_fees_checker_start_date = "2000-01-01T00:00:00" # тут я думаю понятно как заполнять, сначала дата, после буквы Т время (можно оставить нули)
 number_of_retries = 3
 retry_delay = 15
 timeout = 15

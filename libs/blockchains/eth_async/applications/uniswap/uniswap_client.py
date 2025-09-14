@@ -113,36 +113,48 @@ class Uniswap(BaseEVMTaskClass["Uniswap"]):
                     from_decimals: int = 18,
                     to_decimals: int = 18,
                     approve_amount: int | TokenAmount = None):
-        token_from, token_to, from_currency, to_currency = resolve_token_addresses(token_from, token_to)
+        token_from, token_to, from_currency, to_currency = resolve_token_addresses(self, token_from, token_to)
 
         quote, permit_data = await self._get_quote(amount, token_from, token_to, slippage, direction)
+        # self._logger.debug(f"Quote: {quote}")
+        # self._logger.debug(f"Permit data: {permit_data}")
         amount = TokenAmount(int(quote['route'][0][0]['amountIn']), from_decimals, True)
         from_token_symbol = quote['route'][0][0]['tokenIn']['symbol']
         to_token_symbol = quote['route'][0][0]['tokenOut']['symbol']
 
         self._logger.info(f"Swap on Uniswap: {amount} {from_currency} -> {to_currency}")
 
-        if permit_data:
+        permit = await self._sign_permit(permit_data)
+        swap_data = await self._request_swap_data(quote, permit_data, permit)
+        if token_from != CommonValues.ZeroAddress:
             if isinstance(approve_amount, str) and approve_amount == "infinity":
                 approve_amount = None
                 approve_inf = True
             else:
                 approve_inf = False
 
+            spender = swap_data["to"]
             approve = await self.network_client.transactions.approve_interface(token=token_from,
-                                                                     spender=permit_data['domain']['verifyingContract'],
+                                                                     spender=spender,
                                                                      amount_in_tx=amount,
                                                                      amount_to_approve=approve_amount,
                                                                      approve_inf=approve_inf)
             if not approve:
-                raise Exception(f"Failed to approve {approve_amount} {token_from} to {permit_data['domain']['verifyingContract']}")
+                raise Exception(f"Failed to approve {approve_amount} {token_from} to {spender}")
 
-        permit = await self._sign_permit(permit_data)
-        swap_data = await self._request_swap_data(quote, permit_data, permit)
+
         tx_hash = await self.network_client.transactions.send_tx(swap_data)
 
         to_decimals = int(quote['route'][0][0]['tokenOut']['decimals'])
-        amount_to = TokenAmount(int(quote['route'][0][0]['amountOut']), to_decimals, True)
+        try:
+            amount_to = TokenAmount(int(quote['route'][0][0]['amountOut']), to_decimals, True)
+        except KeyError:
+            try:
+                amount_to = TokenAmount(int(quote['route'][0][1]['amountOut']), to_decimals, True)
+            except KeyError:
+                self._logger.warning(f"Failed to get amountOut from quote: {quote}")
+                amount_to = "'Not found in quote'"
+
         self._logger.success(f"Successfully swapped {amount} {from_token_symbol} to {amount_to} {to_token_symbol}")
         return tx_hash
 

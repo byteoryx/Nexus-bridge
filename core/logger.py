@@ -50,8 +50,8 @@ def get_logger(**context):
         "action_num": 0,
         "total_actions": 0,
         "account_name": "-",
-        "account_address": "FastFoodSofts",
-        "class_name": "FastFoodSofts",
+        "account_address": "NexusSoft",
+        "class_name": "NexusSoft",
         "try_num": 0,
         "maximum_retries": 1,
     }
