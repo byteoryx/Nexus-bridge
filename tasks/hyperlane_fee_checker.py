@@ -71,7 +71,7 @@ class HyperLaneFeeChecker(BaseEVMTaskClass["HyperLaneFeeChecker"]):
             await asyncio.sleep(0.2)
 
         total_igp = TokenAmount(total_igp, 18, True)
-        self._logger.success(f"Сумма для {address}: {total_igp.Ether} ETH\n")
+        self._logger.success(f"Сумма для {address}: {total_igp.Ether} ETH")
         return total_igp, len(msg_ids)
 
 #

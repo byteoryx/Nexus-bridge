@@ -285,7 +285,7 @@ class Executioner:
         else:
             raise Exception(f"Swap amounts must be str or float or int: {swap_amounts}")
 
-
+    # не используем prechecks чтобы сначала проверять фисы
     async def execute_nexus_actions(self, action_type, action_params: dict, controller: Controller):
         action_network = action_type.split("_")[-1]
         nexus_bridge_params = action_params["nexus_bridge_params"]
@@ -299,9 +299,11 @@ class Executioner:
         total_igp_usd = float(total_igp.Ether) * eth_price
 
         if total_igp_usd > threshold:
-            self.logger.warning(f"Total IGP after {start_date} is {total_igp_usd} USD,"
+            self.logger.warning(f"Total IGP after {start_date} is {total_igp_usd:.2f} USD,"
                                 f" higher than threshold {threshold}. Skipping bridge.")
             return True
+        else:
+            self.logger.info(f"Total IGP after {start_date} is {total_igp_usd:.2f} USD")
 
         if action_network == "biggest":
             biggest_balance_network, biggest_balance = await self.get_biggest_usdc_balance(controller,
@@ -310,6 +312,13 @@ class Executioner:
                 f"Biggest USDC balance: {biggest_balance} in network {biggest_balance_network.capitalize()}")
 
             action_network = biggest_balance_network
+
+        balance_ok = await self.check_balance_and_withdraw(controller, action_network, action_params)
+        if not balance_ok:
+            self.logger.error("Oops, balance is still too low, quitting action")
+            return False
+
+        await self.gas_control(controller, action_network)
 
         dest_networks_list: list = nexus_bridge_params["networks_to_bridge_to"]
         if action_network in dest_networks_list:
