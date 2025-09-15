@@ -122,8 +122,8 @@ class Executioner:
         withdraw_amount = randfloat(*withdraw_amounts, step=0.0000001)
 
         cex_withdraw_client = CexWithdraw(cex_name, self.log_context)
-
-        return await cex_withdraw_client.withdraw(withdraw_amount, network_name, network_client)
+        coin = network_client.network.coin_symbol
+        return await cex_withdraw_client.withdraw(withdraw_amount, coin, network_name, network_client)
 
 
     def get_function(self, func_name: str):
