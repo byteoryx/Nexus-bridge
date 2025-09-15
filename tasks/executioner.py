@@ -264,8 +264,8 @@ class Executioner:
             raise InsufficientFundsException(f"Insufficient funds for token {token}, balance is {balance}")
 
         if all(isinstance(amount, str) for amount in swap_amounts):
-            swap1 = int(swap_amounts[0])
-            swap2 = int(swap_amounts[1])
+            swap1 = float(swap_amounts[0])
+            swap2 = float(swap_amounts[1])
             if swap1 < 0 or swap2 < 0 or swap1 > swap2 or swap1 > 100 or swap2 > 100:
                 raise Exception(f"Incorrect percentage for swap: {swap_amounts}")
 
@@ -587,6 +587,3 @@ class Executioner:
 
         await network_client.transactions.transfer(eth_deposit_amount, deposit_address)
         return True
-
-    #- Добавить в софте возможность вывода помимо ETH также USDC (настройки по аналогии с ETH - выбор биржи, выбор сетей,
-    # выбор 1 рандом сети из нескольких (но Refuel не потребуется, так как USDC не расходуется))

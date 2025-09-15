@@ -15,7 +15,7 @@ from eth_account.messages import encode_defunct, encode_typed_data
 from core.init_settings import settings
 from core.logger import get_logger
 from .data import types
-from .exceptions import TransactionException, GasException, NonceException, TxFailed
+from .exceptions import TransactionException, GasException, NonceException, TxFailed, InsufficientFundsException
 from libs.blockchains.classes import AutoRepr
 from .network_client_aware import NetworkClientAware
 from .data.models import CommonValues, TxArgs, Network, DefaultABIs, RawContract
@@ -274,18 +274,28 @@ class Transactions(NetworkClientAware):
             raise GasException(f"Failed to estimate gas: {str(e)}") from e
 
     @NetworkClientAware.retry
-    async def preflight_balance_check(self, tx_params):
-        try:
-            # balance = await self.client.wallet.balance()
-            # if "gasPrice" in tx_params:
-            #     needed_balance = tx_params["gas"] * tx_params["gasPrice"]
-            #     if balance.Wei < needed_balance:
-            #         raise InsufficientFundsException(f"Balance: {balance.Ether} {self.client.network.coin_symbol} "
-            #                                 f"less than {needed_balance * 10**18} {self.client.network.coin_symbol}")
+    async def preflight_balance_check_for_transfer(self, tx_params):
+        if int(tx_params["value"]) == 0:
+            return tx_params
 
-            call_res = await self.client.w3.eth.call(tx_params)
-        except:
-            raise
+        balance = await self.client.wallet.balance()
+        gas_price = tx_params.get("gasPrice") or tx_params.get("gas_price") or tx_params.get("maxFeePerGas")
+        if self.client.network.chain_id == 10:
+            needed_balance = 300000 * gas_price
+        else:
+            needed_balance = 21000 * gas_price
+
+        balance_after_transfer = balance.Wei - tx_params["value"]
+        if balance_after_transfer <= needed_balance:
+            amount = int(tx_params["value"]) - int(needed_balance * settings.gas.transfer_multiplier_if_insufficient)
+
+            self.logger.warning(f"Insufficient funds, probably tried to transfer whole native balance."
+                                f" Sending decreased amount: {amount / 10**18} {self.client.network.coin_symbol}")
+
+            tx_params["value"] = self.client.w3.to_wei(amount, unit='wei')
+
+        return tx_params
+
 
     async def auto_add_params(self, tx_params: TxParams) -> TxParams:
         """
@@ -306,7 +316,7 @@ class Transactions(NetworkClientAware):
 
         tx_params = await self.add_nonce(tx_params)
         tx_params = await self.add_gas_price(tx_params)
-        # await self.preflight_balance_check(tx_params)
+        tx_params = await self.preflight_balance_check_for_transfer(tx_params)
         tx_params = await self.add_gas(tx_params)
 
         return tx_params
@@ -340,9 +350,10 @@ class Transactions(NetworkClientAware):
 
         """
         auto_added_params = await self.auto_add_params(tx_params=tx_params)
+
         signed_tx = await self.sign_transaction(auto_added_params)
         tx_hash = await self.client.w3.eth.send_raw_transaction(transaction=signed_tx.raw_transaction)
-        return Tx(tx_hash=tx_hash, params=tx_params) if tx_hash else None
+        return Tx(tx_hash=tx_hash, params=auto_added_params) if tx_hash else None
 
     async def normalize_tx_params(self, tx_params: TxParams | dict):
         if tx_params.get("gasLimit"):
@@ -359,7 +370,7 @@ class Transactions(NetworkClientAware):
                 tx_params.pop("maxPriorityFeePerGas")
 
             if isinstance(tx_params['maxPriorityFeePerGas'], str) and tx_params['maxPriorityFeePerGas'].startswith("0x"):
-                tx_params["maxPriorityFeePerGas"] = int(tx_params["maxPriorityFeePerGas"])
+                tx_params["maxPriorityFeePerGas"] = int(tx_params["maxPriorityFeePerGas"], 16)
             else:
                 tx_params["maxPriorityFeePerGas"] = int(tx_params["maxPriorityFeePerGas"])
 
@@ -510,6 +521,7 @@ class Transactions(NetworkClientAware):
         except TimeExhausted:
             return {}
 
+    @NetworkClientAware.retry
     async def transfer(self, amount: TokenAmount,
                        recipient: str | ChecksumAddress,
                        token: types.Contract = None,

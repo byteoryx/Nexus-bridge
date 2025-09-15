@@ -154,6 +154,8 @@ class GasSettings:
     gas_price_multiplier: float = 1.2
     gas_limit_multiplier: float = 1.3
 
+    transfer_multiplier_if_insufficient: float = 1.3
+
 
 @dataclass
 class OKXSettings:
