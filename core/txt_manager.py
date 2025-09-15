@@ -46,7 +46,8 @@ class AccountData:
             eth_client = EthClient(private_key=self.evm_private_key)
             self.evm_address = eth_client.w3_account.address
 
-        self.cex_deposit_address = self.cex_deposit_address.strip()
+        if self.cex_deposit_address:
+            self.cex_deposit_address = self.cex_deposit_address.strip()
 
 class TxtManager:
     def __init__(self):
@@ -66,7 +67,6 @@ class TxtManager:
         with open(private_key_path, "r") as f:
             lines = f.readlines()
             for line in lines:
-                print(line)
                 pks.append(line.strip())
 
         with open(proxies_path, "r") as f:
@@ -83,17 +83,23 @@ class TxtManager:
         if len(deposit_addresses) != len(pks):
             self.logger.warning(f"Deposit addresses {len(deposit_addresses)} and private keys {len(pks)}"
                                 f" are not the same length")
-            to_continue = input("Do you want to continue (y/n)?")
+            to_continue = input("Do you want to continue (y/n)?\n")
             if to_continue == "n" or to_continue == "N" or to_continue == "no":
                 exit(1)
 
         for i, pk in enumerate(pks):
+            try:
+                deposit_address = deposit_addresses[i]
+            except IndexError:
+                self.logger.warning(f"Deposit address for account {i} not found")
+                deposit_address = None
+
             account = AccountData(
                 name="acc" + str(i+1),
                 evm_private_key=pk,
                 proxy=proxies[i] if proxies else None,
-                max_hyperlane_fees=randfloat(*settings.general.max_hyperlane_fees),
-                cex_deposit_address=deposit_addresses[i]
+                max_hyperlane_fees=randfloat(*settings.general.max_hyperlane_fees, step=0.000001),
+                cex_deposit_address=deposit_address
             )
 
             accounts.append(account)

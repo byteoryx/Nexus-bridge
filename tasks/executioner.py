@@ -300,7 +300,7 @@ class Executioner:
 
         if total_igp_usd > threshold:
             self.logger.warning(f"Total IGP after {start_date} is {total_igp_usd:.2f} USD,"
-                                f" higher than threshold {threshold}. Skipping bridge.")
+                                f" higher than threshold {threshold:.2f}. Skipping bridge.")
             return True
         else:
             self.logger.info(f"Total IGP after {start_date} is {total_igp_usd:.2f} USD")

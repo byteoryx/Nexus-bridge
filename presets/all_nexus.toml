@@ -77,7 +77,7 @@ usdc_approve_amount = "infinity"
 # тут указываем биржи для рандомного выбора (если например захочется Мекс убрать)
 cex_to_random = ["mexc", "bitget", "okx"]
 
-# ЭТО ДЛЯ ПЕРВОГО БОЛЬШОГО ВЫВОДА С БИРЖИ
+# ЭТО ДЛЯ ПЕРВОГО БОЛЬШОГО ВЫВОДА С БИРЖИ (выбирается 1 рандом сеть)
 withdraw_eth_arbitrum_amount = [0.001, 0.002]
 withdraw_eth_optimism_amount = [0.001, 0.002]
 withdraw_eth_base_amount = [0.001, 0.002]
@@ -87,17 +87,17 @@ withdraw_usdc_optimism_amount = [100, 200]
 withdraw_usdc_base_amount = [100, 200]
 
 [functions_params.initial_withdraw_params.mexc]
-# Сети для ПЕРВОГО вывода с Mexc
+# Сети для ПЕРВОГО вывода с Mexc (выбирается 1 рандом сеть)
 networks_to_withdraw_eth = ["optimism"]
 networks_to_withdraw_usdc = ["optimism"]
 
 [functions_params.initial_withdraw_params.bitget]
-# Сети для ПЕРВОГО вывода с Bitget
+# Сети для ПЕРВОГО вывода с Bitget (выбирается 1 рандом сеть)
 networks_to_withdraw_eth = ["base", "arbitrum"]
 networks_to_withdraw_usdc = ["base", "arbitrum"]
 
 [functions_params.initial_withdraw_params.okx]
-# Сети для ПЕРВОГО вывода с Okx
+# Сети для ПЕРВОГО вывода с Okx (выбирается 1 рандом сеть)
 networks_to_withdraw_eth = ["base", "arbitrum"]
 networks_to_withdraw_usdc = ["base", "arbitrum"]
 
@@ -106,7 +106,7 @@ networks_to_withdraw_usdc = ["base", "arbitrum"]
 [functions_params.withdraw_on_min_amount_params]
 # биржа для рефилла выбирается рандомно
 cex_to_refill = ["mexc", "bitget", "okx"]
-
+# В этомс случе выводит в ту сеть, в которой не хватает ETH (не рандом)
 min_eth_arbitrum_amount = 0.05
 min_eth_optimism_amount = 0.05
 min_eth_base_amount = 0.05
