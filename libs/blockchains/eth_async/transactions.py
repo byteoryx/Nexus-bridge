@@ -275,7 +275,10 @@ class Transactions(NetworkClientAware):
 
     @NetworkClientAware.retry
     async def preflight_balance_check_for_transfer(self, tx_params):
-        if int(tx_params["value"]) == 0:
+        data = tx_params.get("data")
+        value = tx_params.get("value")
+
+        if value and int(value) == 0 or data and (len(data)) > 2:
             return tx_params
 
         balance = await self.client.wallet.balance()
