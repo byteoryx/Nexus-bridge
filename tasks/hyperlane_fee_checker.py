@@ -15,6 +15,9 @@ class HyperLaneFeeChecker(BaseEVMTaskClass["HyperLaneFeeChecker"]):
 
     CONTRACTS = None
 
+    # ⚙️ Переключатель для запросов (True = включены, False = выключены)
+    ENABLE_REQUESTS = True
+
     def __init__(self, eth_client: EthClient, requests_client: RequestsClient, log_context):
         self._requests_client = requests_client
         self._eth_client = eth_client
@@ -23,6 +26,10 @@ class HyperLaneFeeChecker(BaseEVMTaskClass["HyperLaneFeeChecker"]):
         super().__init__(self)
 
     async def fetch_message_ids(self, search, date_filter):
+        if not self.ENABLE_REQUESTS:
+            self._logger.warning("Запросы к GraphQL отключены (fetch_message_ids).")
+            return []
+
         query = """query ($search: bytea, $date_filter: timestamp) {
           q0: message_view(where: {_and: [{sender: {_eq: $search}}, {delivery_occurred_at: {_gt: $date_filter}}]}, order_by: {delivery_occurred_at: desc}, limit: 100) { msg_id }
           q1: message_view(where: {_and: [{recipient: {_eq: $search}}, {delivery_occurred_at: {_gt: $date_filter}}]}, order_by: {delivery_occurred_at: desc}, limit: 100) { msg_id }
@@ -58,6 +65,10 @@ class HyperLaneFeeChecker(BaseEVMTaskClass["HyperLaneFeeChecker"]):
             return []
 
     async def fetch_total_payment(self, msg_id):
+        if not self.ENABLE_REQUESTS:
+            self._logger.warning(f"Запросы к GraphQL отключены (fetch_total_payment для msg_id={msg_id}).")
+            return 0
+
         query = """query ($identifier: bytea!) {
           message_view(where: {msg_id: {_eq: $identifier}}, limit: 1) {
             msg_id
@@ -93,8 +104,10 @@ class HyperLaneFeeChecker(BaseEVMTaskClass["HyperLaneFeeChecker"]):
     async def get_total_fees(self, date_filter) -> tuple[TokenAmount, int]:
         address = self._eth_client.w3_account.address
         search = "\\x" + address.lower()[2:]
+
         msg_ids = await self.fetch_message_ids(search, date_filter)
         total_igp = 0
+
         for msg_id in msg_ids:
             total_igp += await self.fetch_total_payment(msg_id)
             await asyncio.sleep(0.2)
