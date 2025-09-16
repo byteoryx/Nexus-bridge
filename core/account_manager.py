@@ -14,7 +14,7 @@ from core.notificator import Notificator
 from utils.utils import read_toml, randfloat, excname
 from core.logger import get_logger, LogContext
 from core.init_settings import settings
-from tasks.executioner import Executioner
+from tasks.executioner import Executioner, EnoughIGPFeesException
 
 
 class AccountManager:
@@ -30,6 +30,8 @@ class AccountManager:
         self.processed_account_ids = set()  # Множество для отслеживания обработанных аккаунтов
         self.logger = get_logger(class_name=self.__class__.__name__)
         self.tg_notificator = Notificator(LogContext.get())
+
+        self.is_enough_igp_caught = False
 
     def load_accounts_from_excel(self):
         columns = dataclasses.asdict(settings.private)
@@ -72,6 +74,74 @@ class AccountManager:
         return self.flows
 
 
+    async def process_action(self, action, account, account_num, actions_dict, total_actions,
+                             rerun_failed, base_log_context, action_num):
+        action_log_context = {
+            **base_log_context,
+            "action_num": action_num,
+            "try_num": 0,
+        }
+        account_logger = get_logger(class_name=self.__class__.__name__, **action_log_context)
+        if action.action_name not in actions_dict:
+            actions_dict[action.action_name] = []
+
+        if rerun_failed:
+            if action.status == RouteStatus.COMPLETED:
+                account_logger.warning(f"Skipping {action.action_name} with status {action.status}")
+                return True
+        else:
+            if action.status == RouteStatus.COMPLETED or action.status == RouteStatus.FAILED:
+                account_logger.warning(f"Skipping {action.action_name} with status {action.status}")
+                return True
+
+        if self.is_enough_igp_caught and "nexus_bridge" in action.action_type.lower():
+            actions_dict[action.action_name].append(True)
+            await db.update_obj_column(action, "status", RouteStatus.COMPLETED)
+            return True
+
+        await db.update_obj_column(action, "status", RouteStatus.IN_PROGRESS)
+        await db.update_obj_column(action, "started_at", datetime.now())
+        try:
+            executioner = Executioner(account=account, total_account_num=account_num,
+                                      action_num=action_num, total_actions=total_actions)
+            result = await executioner.execute_action(action=action)
+
+            if result is True or isinstance(result, dict):
+                actions_dict[action.action_name].append(True)
+                await db.update_obj_column(action, "status", RouteStatus.COMPLETED)
+            else:
+                actions_dict[action.action_name].append(False)
+                await db.update_obj_column(action, "status", RouteStatus.FAILED)
+
+            await db.update_obj_column(action, "completed_at", datetime.now())
+            if action_num < len(list(account.route.actions)):
+                delay = random.randint(*settings.delays.action_delay)
+                account_logger.info(f"Sleeping for 💤{delay}💤 seconds before next action")
+                await asyncio.sleep(delay)
+            else:
+                return True
+
+        except EnoughIGPFeesException:
+            actions_dict[action.action_name].append(True)
+            await db.update_obj_column(action, "status", RouteStatus.COMPLETED)
+            self.is_enough_igp_caught = True
+            account_logger.critical(f"Skipping all Nexus Bridges on this route")
+            return True
+
+        except Exception as e:
+            if settings.logging.debug_logging:
+                account_logger.exception(f"{excname(e)} Error executing action: {e}")
+            else:
+                account_logger.error(f"{excname(e)} Error executing action: {e}")
+
+            actions_dict[action.action_name].append(False)
+            await db.update_obj_column(action, "status", RouteStatus.FAILED)
+            await db.update_obj_column(action, "completed_at", datetime.now())
+            if isinstance(e, RuntimeError):
+                raise e
+
+            return False
+
     async def process_account(self, account: Account, start_sleep: float, account_num: int, rerun_failed: bool):
         total_actions = len(list(account.route.actions))
         await asyncio.sleep(start_sleep)
@@ -108,64 +178,8 @@ class AccountManager:
             await db.update_obj_column(account.route, "started_at", datetime.now())
 
             for action_num, action in enumerate(list(account.route.actions), start=1):
-                action_log_context = {
-                    **base_log_context,
-                    "action_num": action_num,
-                    "try_num": 0,
-                }
-                account_logger = get_logger(class_name=self.__class__.__name__, **action_log_context)
-                if action.action_name not in actions_dict:
-                    actions_dict[action.action_name] = []
-
-                if rerun_failed:
-                    if action.status == RouteStatus.COMPLETED:
-                        account_logger.warning(f"Skipping {action.action_name} with status {action.status}")
-                        continue
-                else:
-                    if action.status == RouteStatus.COMPLETED or action.status == RouteStatus.FAILED:
-                        account_logger.warning(f"Skipping {action.action_name} with status {action.status}")
-                        continue
-
-                await db.update_obj_column(action, "status", RouteStatus.IN_PROGRESS)
-                await db.update_obj_column(action, "started_at", datetime.now())
-                try:
-                    executioner = Executioner(account=account, total_account_num=account_num,
-                                              action_num=action_num, total_actions=total_actions)
-                    result = await executioner.execute_action(action=action)
-
-                    if result is True or isinstance(result, dict):
-                        actions_dict[action.action_name].append(True)
-                        await db.update_obj_column(action, "status", RouteStatus.COMPLETED)
-                    else:
-                        actions_dict[action.action_name].append(False)
-                        await db.update_obj_column(action, "status", RouteStatus.FAILED)
-
-                    # actions_dict[action.action_name]["count"] += 1
-                    await db.update_obj_column(action, "completed_at", datetime.now())
-                    if action_num < len(list(account.route.actions)):
-                        delay = random.randint(settings.delays.action_delay[0], settings.delays.action_delay[1])
-                        account_logger.info(f"Sleeping for 💤{delay}💤 seconds before next action")
-                        await asyncio.sleep(delay)
-                    else:
-                        break
-                # except (curl_cffi.requests.exceptions.ConnectionError, curl_cffi.curl.CurlError):
-                #     account_logger.warning(f"Account {account.name} request error while opening controller, retrying...")
-                #     continue
-
-                except Exception as e:
-                    if settings.logging.debug_logging:
-                        account_logger.exception(f"{excname(e)} Error executing action: {e}")
-                    else:
-                        account_logger.error(f"{excname(e)} Error executing action: {e}")
-
-                    actions_dict[action.action_name].append(False)
-                    # actions_dict[action.action_name]["count"] += 1
-                    await db.update_obj_column(action, "status", RouteStatus.FAILED)
-                    await db.update_obj_column(action, "completed_at", datetime.now())
-                    if isinstance(e, RuntimeError):
-                        raise e
-
-                    return
+                action_result = await self.process_action(action, account, account_num, actions_dict,
+                                                          total_actions, rerun_failed, base_log_context, action_num)
 
             account_logger.info(f"Account {account.name} finished, waiting for other accounts in flow")
 
@@ -190,7 +204,6 @@ class AccountManager:
 
             if action:
                 actions_dict[action.action_name].append(False)
-                # actions_dict[action.action_name]["count"] += 1
 
             await self.finalize_account_processing(account, actions_dict, previous_status, account_logger, base_log_context)
 

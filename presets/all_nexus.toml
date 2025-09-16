@@ -208,4 +208,4 @@ deposit_usdc = true
 # можно не менять, если отправляем весь USDC
 usdc_deposit_amounts = ["100", "100"]
 
-eth_deposit_amounts = ["80", "90"]
+eth_deposit_amounts = ["80", "95"]

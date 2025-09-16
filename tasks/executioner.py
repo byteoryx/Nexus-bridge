@@ -16,15 +16,19 @@ from libs.blockchains.eth_async.applications.nexus_bridge.nexus_bridge import Ne
 from libs.blockchains.eth_async.applications.odos.odos import Odos
 from libs.blockchains.eth_async.applications.uniswap.uniswap_client import Uniswap
 from libs.blockchains.eth_async.applications.velodrome.velodrome_client import Velodrome
-from libs.blockchains.eth_async.data.models import Networks, CommonValues
+from libs.blockchains.eth_async.data.models import Networks
 from libs.blockchains.eth_async.ethclient import NetworkClient
 from libs.blockchains.omnichain_models import TokenAmount
 from libs.blockchains.eth_async.exceptions import InsufficientFundsException
 from libs.cex.withdraw import CexWithdraw
 from tasks.hyperlane_fee_checker import HyperLaneFeeChecker
-from tasks.prechecks import prechecks, nexus_network_resolver
+from tasks.prechecks import prechecks
 from utils.utils import randfloat, excname
 from tasks.controller import Controller
+
+
+class EnoughIGPFeesException(Exception):
+    pass
 
 
 class Executioner:
@@ -177,6 +181,9 @@ class Executioner:
                                           f" wrong address or token is not in desired Uniswap chain")
                         return False
 
+                except EnoughIGPFeesException:
+                    raise
+
                 except Exception as e:
                     if settings.logging.debug_logging:
                         self.logger.exception(f"{excname(e)}. Try {self.try_num} for action {action.action_type} failed: '{str(e)}'")
@@ -301,7 +308,7 @@ class Executioner:
         if total_igp_usd > threshold:
             self.logger.warning(f"Total IGP after {start_date} is {total_igp_usd:.2f} USD,"
                                 f" higher than threshold {threshold:.2f}. Skipping bridge.")
-            return True
+            raise EnoughIGPFeesException()
         else:
             self.logger.info(f"Total IGP after {start_date} is {total_igp_usd:.2f} USD")
 
